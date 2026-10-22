@@ -622,7 +622,7 @@ export default function FacebookPages() {
   const [isBulkScheduleModalOpen, setIsBulkScheduleModalOpen] = useState(false);
   const [isSubmittingBulkSchedule, setIsSubmittingBulkSchedule] = useState(false);
   const [bulkPostFormat, setBulkPostFormat] = useState<'reel' | 'image' | 'mixed'>('reel');
-  const [bulkVideoEngine, setBulkVideoEngine] = useState<'hook_image' | 'text_story' | 'muse'>('hook_image');
+  const [bulkVideoEngine, setBulkVideoEngine] = useState<'hook_image' | 'text_story' | 'muse'>('text_story');
   const [bulkDefaultBgm, setBulkDefaultBgm] = useState<string>('');
   const [bulkReelTemplateId, setBulkReelTemplateId] = useState<string>('random');
   const [bulkTextStoryTemplates, setBulkTextStoryTemplates] = useState<any[]>([]);
@@ -813,6 +813,14 @@ export default function FacebookPages() {
     ztteam_fetchPagesFromDB();
     ztteam_fetchAccounts();
     ztteam_fetchSites();
+    api.get('templates?format=video')
+      .then(res => {
+        if (Array.isArray(res.data)) {
+          const stories = res.data.filter((t: any) => t.content_type === 'text_story');
+          setBulkTextStoryTemplates(stories);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleTestPost = async (pageId: string) => {
@@ -1158,6 +1166,7 @@ export default function FacebookPages() {
                   if (selectedPageIds.length === 0) {
                     handleSelectAllCurrentTab();
                   }
+                  setBulkVideoEngine('text_story');
                   setIsBulkScheduleModalOpen(true);
                 }}
                 className="px-3 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/40"
@@ -1356,7 +1365,10 @@ export default function FacebookPages() {
             </button>
 
             <button
-              onClick={() => setIsBulkScheduleModalOpen(true)}
+              onClick={() => {
+                setBulkVideoEngine('text_story');
+                setIsBulkScheduleModalOpen(true);
+              }}
               className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined text-base">tune</span>
@@ -1557,15 +1569,18 @@ export default function FacebookPages() {
 
                   {(bulkPostFormat === 'reel' || bulkPostFormat === 'mixed') && (
                     <div>
-                      <label className="block text-xs font-bold text-amber-400 mb-1.5">
-                        Công Nghệ Tạo Video Reel
+                      <label className="block text-xs font-bold text-amber-400 mb-1.5 flex items-center justify-between">
+                        <span>Công Nghệ Tạo Video Reel</span>
+                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          Đã tích hợp 50+ Mẫu
+                        </span>
                       </label>
                       <CustomDropdown
                         value={bulkVideoEngine}
                         onChange={(val) => setBulkVideoEngine(val as any)}
                         options={[
-                          { value: 'hook_image', label: 'Tạo từ Ảnh Hook & Nhạc (1080x1920 10s - Mặc định)' },
-                          { value: 'text_story', label: 'Text Story Reel (Kính Mờ 9:16, Zoom Ken Burns 10s)' },
+                          { value: 'text_story', label: 'Text Story Reel (Kính Mờ 9:16, Zoom Ken Burns 10s - Khuyên dùng)' },
+                          { value: 'hook_image', label: 'Tạo từ Ảnh Hook & Nhạc (1080x1920 10s)' },
                           { value: 'muse', label: 'Tạo bằng Motion AI (Muse Motion Reel)' },
                         ]}
                         className="w-full"
@@ -1573,8 +1588,9 @@ export default function FacebookPages() {
                     </div>
                   )}
 
-                  {(bulkPostFormat === 'reel' || bulkPostFormat === 'mixed') && bulkVideoEngine === 'text_story' && (
-                    <div className="sm:col-span-2 bg-slate-900/50 p-3.5 rounded-xl border border-emerald-500/25 space-y-1.5">
+                  {/** Luôn hiển thị Mẫu Giao Diện Text Story (Reel Template) khi đăng Reel hoặc Xen kẽ */}
+                  {(bulkPostFormat === 'reel' || bulkPostFormat === 'mixed') && (
+                    <div className="sm:col-span-2 bg-slate-900/60 p-3.5 rounded-xl border border-emerald-500/30 space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="block text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                           <span className="material-symbols-outlined text-[16px]">style</span>
@@ -1586,7 +1602,12 @@ export default function FacebookPages() {
                       </div>
                       <CustomDropdown
                         value={bulkReelTemplateId}
-                        onChange={(val) => setBulkReelTemplateId(val)}
+                        onChange={(val) => {
+                          setBulkReelTemplateId(val);
+                          if (bulkVideoEngine !== 'text_story') {
+                            setBulkVideoEngine('text_story');
+                          }
+                        }}
                         options={[
                           { value: 'random', label: '🎲 Tự động chọn ngẫu nhiên mẫu (Khuyên dùng - Đa dạng bài đăng)' },
                           ...bulkTextStoryTemplates.map(t => ({
@@ -1597,9 +1618,11 @@ export default function FacebookPages() {
                         className="w-full"
                       />
                       <p className="text-[11px] text-fb-text-muted leading-relaxed">
-                        {bulkReelTemplateId === 'random'
-                          ? 'Mỗi bài viết video Text Story của các Page được chọn sẽ tự động lấy ngẫu nhiên 1 mẫu trong kho (50+ mẫu đa màu sắc, không trùng lặp).'
-                          : 'Cố định áp dụng mẫu giao diện này cho toàn bộ video Text Story của các Fanpage được chọn.'}
+                        {bulkVideoEngine === 'text_story'
+                          ? (bulkReelTemplateId === 'random'
+                              ? '✅ Đang kích hoạt: Mỗi video Text Story của các Page được chọn sẽ tự động lấy ngẫu nhiên 1 mẫu trong kho (50+ mẫu đa màu sắc, không trùng lặp).'
+                              : '✅ Đang kích hoạt: Cố định áp dụng mẫu giao diện này cho toàn bộ video Text Story của các Fanpage được chọn.')
+                          : '💡 Gợi ý: Khi chọn công nghệ tạo video "Text Story Reel" ở trên, mẫu giao diện này sẽ được áp dụng cho toàn bộ Fanpage được chọn.'}
                       </p>
                     </div>
                   )}
