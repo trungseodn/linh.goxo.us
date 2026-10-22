@@ -1,3 +1,5 @@
+import { getTextStory50Templates } from './text_story_50_templates';
+
 const teaserHtml = `
 <!--
   Template: teaser ("Tin nóng 5s")
@@ -202,8 +204,6 @@ export const seedTemplates = () => {
   });
 
 
-
-import { getTextStory50Templates } from './text_story_50_templates';
 
   // Seed 50 bộ mẫu Text Story Reel đa dạng sắc màu điện ảnh (Không hồng/tím)
   const textStory50 = getTextStory50Templates();
