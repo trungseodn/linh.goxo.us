@@ -2302,6 +2302,7 @@ export class ZTTeamFacebookService {
     await this.prisma.ztteam_pages.update({
       where: { id: page.id },
       data: {
+        avatar: avatarResult.imageUrl,
         branding_avatar_url: avatarResult.imageUrl,
         branding_avatar_prompt: prompts.avatarPrompt,
       } as any
@@ -2315,6 +2316,7 @@ export class ZTTeamFacebookService {
       await this.prisma.ztteam_pages.update({
         where: { id: page.id },
         data: {
+          cover_url: coverResult.imageUrl,
           branding_cover_url: coverResult.imageUrl,
           branding_cover_prompt: prompts.coverPrompt,
         } as any
@@ -2365,8 +2367,9 @@ export class ZTTeamFacebookService {
    * Tự động luân chuyển sang Key kế tiếp khi Key hiện tại hết credit hoặc gặp sự cố
    */
   private readonly ZTTEAM_BRANDING_SANGTAO_KEYS = [
-    'stai_751dcc6175575dd8cf1f5fc522b62cc2da73e8404f3f527e', /** Key 1: 24 credit */
-    'stai_bf5e874c373092f9429faba2f1d5da159fb9d89929620c70', /** Key 2: 100 credit */
+    'stai_c6a32d3c49253c5702e9ccbf35405200c6ddab7a28e2df5c', /** Key mới: hoạt động tốt */
+    'stai_751dcc6175575dd8cf1f5fc522b62cc2da73e8404f3f527e',
+    'stai_bf5e874c373092f9429faba2f1d5da159fb9d89929620c70',
   ];
 
   /**
@@ -2379,8 +2382,12 @@ export class ZTTeamFacebookService {
   }> {
     let lastError: any = null;
 
-    for (let i = 0; i < this.ZTTEAM_BRANDING_SANGTAO_KEYS.length; i++) {
-      const currentKey = this.ZTTEAM_BRANDING_SANGTAO_KEYS[i];
+    const envKey = process.env.SANGTAO_API_KEY ? process.env.SANGTAO_API_KEY.trim() : null;
+    const keyPool = [envKey, ...this.ZTTEAM_BRANDING_SANGTAO_KEYS].filter(Boolean) as string[];
+    const uniqueKeys = Array.from(new Set(keyPool));
+
+    for (let i = 0; i < uniqueKeys.length; i++) {
+      const currentKey = uniqueKeys[i];
       const maskedKey = `${currentKey.substring(0, 8)}...${currentKey.substring(currentKey.length - 4)}`;
       this.logger.log(`[Branding] Đang tạo ảnh (${aspectRatio}) bằng SangTao.ai với Key #${i + 1} (${maskedKey})...`);
 
@@ -2464,6 +2471,7 @@ export class ZTTeamFacebookService {
       await this.prisma.ztteam_pages.update({
         where: { id: page.id },
         data: {
+          avatar: result.imageUrl,
           branding_avatar_url: result.imageUrl,
           branding_avatar_prompt: activePrompt,
         } as any
@@ -2472,6 +2480,7 @@ export class ZTTeamFacebookService {
       await this.prisma.ztteam_pages.update({
         where: { id: page.id },
         data: {
+          cover_url: result.imageUrl,
           branding_cover_url: result.imageUrl,
           branding_cover_prompt: activePrompt,
         } as any
