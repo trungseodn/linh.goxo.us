@@ -12,7 +12,9 @@
    * **Tuyệt đối không thực hiện bất kỳ thao tác nào gây xóa, reset, hoặc ghi đè mất mát dữ liệu trên VPS nếu chưa có sự ĐỒNG Ý RÕ RÀNG từ người dùng.**
 
 2. **QUẢN LÝ MÃ NGUỒN PHÂN TÁCH HOÀN TOÀN**:
-   * **Upstream (Gốc)**: `https://github.com/devzota/fb-bm-reel` $\rightarrow$ **CHỈ ĐỌC (READ-ONLY)**. Tuyệt đối không bao giờ push code lên repository này.
+   * **Upstream (Gốc)**: `https://github.com/devzota/fb-bm-reel` $\rightarrow$ **CHỈ ĐỌC (READ-ONLY)**.
+     * Cấu hình cấm push (`push = DISABLE`) chỉ được thiết lập **cục bộ (locally)** tại riêng thư mục dự án này (`d:\projects\t2.goxo.us`).
+     * **HOÀN TOÀN KHÔNG ẢNH HƯỞNG** đến các máy khác hoặc các dự án khác: Ở máy khác hoặc thư mục khác, bạn vẫn có thể pull/push lên repo gốc bình thường nếu tài khoản có quyền.
    * **Origin (Phát triển chính)**: `https://github.com/trungseodn/t2goxo` $\rightarrow$ Toàn bộ code phát triển, tính năng mới và deploy đều đi qua repo này.
 
 3. **CƠ CHẾ PHÊ DUYỆT (EXPLICIT APPROVAL)**:
@@ -20,15 +22,45 @@
 
 ---
 
-## 2. HIỆN TRẠNG HỆ THỐNG VPS (SNAPSHOT ĐÃ XÁC MINH 22/10/2026)
+## 2. HƯỚNG DẪN ĐĂNG NHẬP & KẾT NỐI VPS (SSH ACCESS DETAILS)
 
-* **Địa chỉ VPS**: `169.58.210.160` (Domain: `t2.goxo.us`)
-* **Lệnh SSH chuẩn xác**:
-  ```powershell
-  C:\Windows\System32\OpenSSH\ssh.exe -i "C:\Users\OS\.ssh\vps2_t2_t3_may2_key" -o StrictHostKeyChecking=no root@169.58.210.160
-  ```
+Mỗi khi cần kết nối, kiểm tra hoặc thao tác trên VPS, AI Assistant hoặc kỹ thuật viên sẽ sử dụng thông tin và câu lệnh chuẩn dưới đây:
+
+* **Tên Server**: `auto-reel-trung-2`
+* **IP Server**: `169.58.210.160` (Port: `22`)
+* **Domain trỏ về**: `t2.goxo.us` (và `3t.goxo.us`, `t3.goxo.us`)
+* **User**: `root`
+* **Vị trí file SSH Private Key**:
+  * Đường dẫn Windows: `C:\Users\OS\.ssh\vps2_t2_t3_may2_key`
 * **Đường dẫn thư mục dự án trên VPS**: `/root/ztreel-app`
-* **Docker Compose file áp dụng**: `docker-compose.t2.yml`
+
+### Các câu lệnh SSH chuẩn:
+
+1. **Mở phiên SSH tương tác (Interactive Shell)**:
+   ```powershell
+   C:\Windows\System32\OpenSSH\ssh.exe -i "C:\Users\OS\.ssh\vps2_t2_t3_may2_key" -o StrictHostKeyChecking=no root@169.58.210.160
+   ```
+
+2. **Chạy lệnh đơn từ PowerShell (One-shot command)**:
+   ```powershell
+   & C:\Windows\System32\OpenSSH\ssh.exe -i "C:\Users\OS\.ssh\vps2_t2_t3_may2_key" -o StrictHostKeyChecking=no root@169.58.210.160 '<câu_lệnh_bash>'
+   ```
+
+3. **Xem trạng thái các container**:
+   ```powershell
+   & C:\Windows\System32\OpenSSH\ssh.exe -i "C:\Users\OS\.ssh\vps2_t2_t3_may2_key" -o StrictHostKeyChecking=no root@169.58.210.160 'docker ps'
+   ```
+
+4. **Xem log realtime của API**:
+   ```powershell
+   & C:\Windows\System32\OpenSSH\ssh.exe -i "C:\Users\OS\.ssh\vps2_t2_t3_may2_key" -o StrictHostKeyChecking=no root@169.58.210.160 'docker logs -f ztreel_api_prod --tail 100'
+   ```
+
+---
+
+## 3. HIỆN TRẠNG HỆ THỐNG VPS (SNAPSHOT ĐÃ XÁC MINH 22/10/2026)
+
+* **Docker Compose file áp dụng**: `docker-compose.t2.yml` (nằm tại `/root/ztreel-app`)
 * **Các container đang hoạt động**:
   * `ztreel_api_prod` (API NestJS - Port nội bộ 3000)
   * `ztreel_web_prod` (Frontend React - Port nội bộ 8080)
