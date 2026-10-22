@@ -126,6 +126,10 @@ export default function ReelTemplateLibrary() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
+  /** Bộ lọc danh mục & Tìm kiếm trong Kho Mẫu */
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterSearch, setFilterSearch] = useState<string>('');
+
   /** Form state tùy biến mẫu */
   const [templateName, setTemplateName] = useState<string>('Text Story - Mẫu Tùy Chỉnh Mới');
   const [bgGradient, setBgGradient] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].bgGradient);
@@ -295,6 +299,46 @@ export default function ReelTemplateLibrary() {
   const displayAuthorName = previewPage ? previewPage.name : authorName;
   const displayAvatar = previewPage?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150';
 
+  const CATEGORY_TABS = [
+    { id: 'all', label: 'Tất cả' },
+    { id: 'ocean', label: '🌊 Lam & Cyan' },
+    { id: 'emerald', label: '🌲 Lục Bảo' },
+    { id: 'obsidian', label: '🌑 Đen Obsidian' },
+    { id: 'gold', label: '👑 Vàng Hổ Phách' },
+    { id: 'earth', label: '☕ Cà Phê & Gỗ' },
+  ];
+
+  const filteredTemplates = templates.filter((tpl) => {
+    const layout = tpl.layout || {};
+    const tplCategory = layout.category || '';
+    const tplName = (tpl.name || '').toLowerCase();
+    const tplAuthor = (layout.authorName || '').toLowerCase();
+    const tplSubtitle = (layout.authorSubtitle || '').toLowerCase();
+    const tplTheme = (layout.themeStyle || '').toLowerCase();
+
+    // Lọc theo Category
+    if (filterCategory !== 'all') {
+      if (tplCategory !== filterCategory) {
+        const matchesCategory =
+          (filterCategory === 'ocean' && (tplName.includes('ocean') || tplName.includes('sapphire') || tplName.includes('cyan') || tplName.includes('arctic') || tplName.includes('biển'))) ||
+          (filterCategory === 'emerald' && (tplName.includes('emerald') || tplName.includes('forest') || tplName.includes('lục bảo') || tplName.includes('jade') || tplName.includes('mint') || tplName.includes('pine'))) ||
+          (filterCategory === 'obsidian' && (tplName.includes('obsidian') || tplName.includes('charcoal') || tplName.includes('slate') || tplName.includes('mono') || tplName.includes('đen') || tplName.includes('titanium'))) ||
+          (filterCategory === 'gold' && (tplName.includes('gold') || tplName.includes('amber') || tplName.includes('vàng') || tplName.includes('bronze') || tplName.includes('citrus') || tplName.includes('honey'))) ||
+          (filterCategory === 'earth' && (tplName.includes('espresso') || tplName.includes('wood') || tplName.includes('cà phê') || tplName.includes('walnut') || tplName.includes('mocha') || tplName.includes('chocolate')));
+        if (!matchesCategory) return false;
+      }
+    }
+
+    // Lọc theo ô tìm kiếm
+    if (filterSearch.trim()) {
+      const q = filterSearch.toLowerCase().trim();
+      const match = tplName.includes(q) || tplAuthor.includes(q) || tplSubtitle.includes(q) || tplTheme.includes(q);
+      if (!match) return false;
+    }
+
+    return true;
+  });
+
   /** Lưu / Cập nhật template */
   const ztteam_saveTemplate = async () => {
     try {
@@ -447,17 +491,76 @@ export default function ReelTemplateLibrary() {
       </div>
 
       {/** 2. DANH SÁCH MẪU TRONG KHO (LOAD TỪ DATABASE) */}
-      <div className="bg-fb-surface rounded-2xl p-5 shadow-lg border border-fb-surface-hover/60">
-        <div className="flex items-center justify-between mb-3.5">
+      <div className="bg-fb-surface rounded-2xl p-5 shadow-lg border border-fb-surface-hover/60 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-400 text-xl">folder_special</span>
             <h3 className="text-sm font-black text-fb-text uppercase tracking-wide">
               Các Mẫu Đang Có Trong Kho ({templates.length})
             </h3>
           </div>
-          <span className="text-[11px] text-fb-text-muted">
-            Chọn 1 mẫu bên dưới để chỉnh sửa hoặc sao chép màu sắc
-          </span>
+          {/** Ô Tìm Kiếm */}
+          <div className="relative w-full sm:w-72">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-fb-text-muted text-base">
+              search
+            </span>
+            <input
+              type="text"
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              placeholder="Tìm theo tên, màu sắc, phong cách..."
+              className="w-full pl-9 pr-8 py-1.5 bg-fb-surface-hover/50 border border-white/10 rounded-xl text-xs text-fb-text placeholder-fb-text-muted focus:outline-hidden focus:border-cyan-400"
+            />
+            {filterSearch && (
+              <button
+                type="button"
+                onClick={() => setFilterSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-fb-text-muted hover:text-white"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/** Thanh Tab Phân Loại Category */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-fb-surface-hover/50 scrollbar-none">
+          {CATEGORY_TABS.map((tab) => {
+            const count = tab.id === 'all'
+              ? templates.length
+              : templates.filter(t => {
+                  const cat = t.layout?.category;
+                  if (cat === tab.id) return true;
+                  const nm = (t.name || '').toLowerCase();
+                  if (tab.id === 'ocean') return nm.includes('ocean') || nm.includes('cyan') || nm.includes('sapphire') || nm.includes('arctic');
+                  if (tab.id === 'emerald') return nm.includes('emerald') || nm.includes('forest') || nm.includes('lục bảo') || nm.includes('jade');
+                  if (tab.id === 'obsidian') return nm.includes('obsidian') || nm.includes('slate') || nm.includes('mono') || nm.includes('charcoal');
+                  if (tab.id === 'gold') return nm.includes('gold') || nm.includes('amber') || nm.includes('vàng') || nm.includes('bronze');
+                  if (tab.id === 'earth') return nm.includes('espresso') || nm.includes('wood') || nm.includes('cà phê') || nm.includes('walnut');
+                  return false;
+                }).length;
+            const isActive = filterCategory === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFilterCategory(tab.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isActive
+                    ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-xs'
+                    : 'bg-fb-surface-hover/40 text-fb-text-muted hover:text-fb-text hover:bg-fb-surface-hover border border-transparent'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  isActive ? 'bg-cyan-500/25 text-cyan-300' : 'bg-black/30 text-slate-400'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {isLoadingTemplates ? (
@@ -465,13 +568,22 @@ export default function ReelTemplateLibrary() {
             <span className="material-symbols-outlined animate-spin text-fb-blue">sync</span>
             <span>Đang nạp danh sách mẫu từ hệ thống...</span>
           </div>
-        ) : templates.length === 0 ? (
-          <div className="py-6 text-center text-xs text-fb-text-muted">
-            Chưa có mẫu nào. Bấm "Tạo Mẫu Mới" ở trên để tạo mẫu đầu tiên.
+        ) : filteredTemplates.length === 0 ? (
+          <div className="py-8 text-center text-xs text-fb-text-muted space-y-2">
+            <p>Không tìm thấy mẫu nào phù hợp với bộ lọc hiện tại.</p>
+            {(filterSearch || filterCategory !== 'all') && (
+              <button
+                type="button"
+                onClick={() => { setFilterCategory('all'); setFilterSearch(''); }}
+                className="text-cyan-400 hover:underline font-bold inline-block cursor-pointer"
+              >
+                Xóa bộ lọc & hiển thị tất cả ({templates.length} mẫu)
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-            {templates.map((tpl) => {
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3.5 max-h-[460px] overflow-y-auto pr-1">
+            {filteredTemplates.map((tpl) => {
               const isSelected = selectedTemplateId === tpl.id;
               const tplHl = tpl.layout?.hlColor || '#fbbf24';
               const tplBg = tpl.layout?.bgGradient || '#0f172a';

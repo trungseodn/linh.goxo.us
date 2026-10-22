@@ -991,6 +991,7 @@ export class ZTTeamFacebookService {
       videoEngine?: 'hook_image' | 'text_story' | 'muse';
       defaultBgm?: string;
       autoPublishEnabled?: boolean;
+      defaultReelTemplateId?: string | null;
     }
   ) {
     const {
@@ -1000,7 +1001,8 @@ export class ZTTeamFacebookService {
       postFormat,
       videoEngine,
       defaultBgm,
-      autoPublishEnabled
+      autoPublishEnabled,
+      defaultReelTemplateId
     } = data;
 
     if (!pageIds || pageIds.length === 0) {
@@ -1077,6 +1079,9 @@ export class ZTTeamFacebookService {
       }
       if (defaultBgm !== undefined) {
         updateData.default_bgm = defaultBgm || null;
+      }
+      if (defaultReelTemplateId !== undefined) {
+        updateData.default_reel_template_id = (defaultReelTemplateId === 'random' || !defaultReelTemplateId) ? null : defaultReelTemplateId;
       }
 
       await this.prisma.ztteam_pages.update({

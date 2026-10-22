@@ -624,6 +624,8 @@ export default function FacebookPages() {
   const [bulkPostFormat, setBulkPostFormat] = useState<'reel' | 'image' | 'mixed'>('reel');
   const [bulkVideoEngine, setBulkVideoEngine] = useState<'hook_image' | 'text_story' | 'muse'>('hook_image');
   const [bulkDefaultBgm, setBulkDefaultBgm] = useState<string>('');
+  const [bulkReelTemplateId, setBulkReelTemplateId] = useState<string>('random');
+  const [bulkTextStoryTemplates, setBulkTextStoryTemplates] = useState<any[]>([]);
   const [bulkPostsPerDay, setBulkPostsPerDay] = useState<number>(4);
   const [bulkAutoPublish, setBulkAutoPublish] = useState<boolean>(true);
   const [bulkBgmList, setBulkBgmList] = useState<any[]>([]);
@@ -734,16 +736,28 @@ export default function FacebookPages() {
     }
   };
 
-  /** Tải danh sách BGM khi mở Modal cài đặt hàng loạt */
+  /** Tải danh sách BGM & Mẫu Text Story khi mở Modal cài đặt hàng loạt */
   useEffect(() => {
-    if (isBulkScheduleModalOpen && bulkBgmList.length === 0) {
-      api.get('media/bgm')
-        .then(res => {
-          if (res.data?.success && Array.isArray(res.data?.data)) {
-            setBulkBgmList(res.data.data);
-          }
-        })
-        .catch(() => {});
+    if (isBulkScheduleModalOpen) {
+      if (bulkBgmList.length === 0) {
+        api.get('media/bgm')
+          .then(res => {
+            if (res.data?.success && Array.isArray(res.data?.data)) {
+              setBulkBgmList(res.data.data);
+            }
+          })
+          .catch(() => {});
+      }
+      if (bulkTextStoryTemplates.length === 0) {
+        api.get('templates?format=video')
+          .then(res => {
+            if (Array.isArray(res.data)) {
+              const stories = res.data.filter((t: any) => t.content_type === 'text_story');
+              setBulkTextStoryTemplates(stories);
+            }
+          })
+          .catch(() => {});
+      }
     }
   }, [isBulkScheduleModalOpen]);
 
@@ -766,6 +780,7 @@ export default function FacebookPages() {
         postsPerDay: bulkPostsPerDay,
         postFormat: bulkPostFormat,
         videoEngine: bulkVideoEngine,
+        defaultReelTemplateId: bulkReelTemplateId,
         defaultBgm: bulkDefaultBgm || undefined,
         autoPublishEnabled: bulkAutoPublish,
       });
@@ -1555,6 +1570,37 @@ export default function FacebookPages() {
                         ]}
                         className="w-full"
                       />
+                    </div>
+                  )}
+
+                  {(bulkPostFormat === 'reel' || bulkPostFormat === 'mixed') && bulkVideoEngine === 'text_story' && (
+                    <div className="sm:col-span-2 bg-slate-900/50 p-3.5 rounded-xl border border-emerald-500/25 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[16px]">style</span>
+                          <span>Mẫu Giao Diện Text Story (Reel Template)</span>
+                        </label>
+                        <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          {bulkTextStoryTemplates.length} mẫu trong kho
+                        </span>
+                      </div>
+                      <CustomDropdown
+                        value={bulkReelTemplateId}
+                        onChange={(val) => setBulkReelTemplateId(val)}
+                        options={[
+                          { value: 'random', label: '🎲 Tự động chọn ngẫu nhiên mẫu (Khuyên dùng - Đa dạng bài đăng)' },
+                          ...bulkTextStoryTemplates.map(t => ({
+                            value: t.id,
+                            label: `📑 ${t.name}`
+                          }))
+                        ]}
+                        className="w-full"
+                      />
+                      <p className="text-[11px] text-fb-text-muted leading-relaxed">
+                        {bulkReelTemplateId === 'random'
+                          ? 'Mỗi bài viết video Text Story của các Page được chọn sẽ tự động lấy ngẫu nhiên 1 mẫu trong kho (50+ mẫu đa màu sắc, không trùng lặp).'
+                          : 'Cố định áp dụng mẫu giao diện này cho toàn bộ video Text Story của các Fanpage được chọn.'}
+                      </p>
                     </div>
                   )}
                 </div>

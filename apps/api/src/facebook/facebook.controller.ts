@@ -57,6 +57,7 @@ export class ZTTeamFacebookController {
       videoEngine?: 'hook_image' | 'text_story' | 'muse';
       defaultBgm?: string;
       autoPublishEnabled?: boolean;
+      defaultReelTemplateId?: string | null;
     },
     @Request() req: any
   ) {
