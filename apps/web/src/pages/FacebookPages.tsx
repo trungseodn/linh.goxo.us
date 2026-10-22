@@ -1550,7 +1550,7 @@ export default function FacebookPages() {
                   <span>1. Định Dạng Bài Đăng & Kiểu Tạo Video</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
                     <label className="block text-xs font-bold text-fb-text mb-1.5">
                       Định Dạng Bài Đăng Chính
@@ -1569,84 +1569,97 @@ export default function FacebookPages() {
 
                   {(bulkPostFormat === 'reel' || bulkPostFormat === 'mixed') && (
                     <div>
-                      <label className="block text-xs font-bold text-amber-400 mb-1.5 flex items-center justify-between">
-                        <span>Công Nghệ Tạo Video Reel</span>
-                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                          Đã tích hợp 50+ Mẫu
-                        </span>
+                      <label className="block text-xs font-bold text-fb-text mb-1.5">
+                        Nhạc Nền Video Reel (BGM)
                       </label>
                       <CustomDropdown
-                        value={bulkVideoEngine}
-                        onChange={(val) => setBulkVideoEngine(val as any)}
+                        value={bulkDefaultBgm}
+                        onChange={(val) => setBulkDefaultBgm(val)}
                         options={[
-                          { value: 'text_story', label: 'Text Story Reel (Kính Mờ 9:16, Zoom Ken Burns 10s - Khuyên dùng)' },
-                          { value: 'hook_image', label: 'Tạo từ Ảnh Hook & Nhạc (1080x1920 10s)' },
-                          { value: 'muse', label: 'Tạo bằng Motion AI (Muse Motion Reel)' },
-                        ]}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
-
-                  {/** Luôn hiển thị Mẫu Giao Diện Text Story (Reel Template) khi đăng Reel hoặc Xen kẽ */}
-                  {(bulkPostFormat === 'reel' || bulkPostFormat === 'mixed') && (
-                    <div className="sm:col-span-2 bg-slate-900/60 p-3.5 rounded-xl border border-emerald-500/30 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-[16px]">style</span>
-                          <span>Mẫu Giao Diện Text Story (Reel Template)</span>
-                        </label>
-                        <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                          {bulkTextStoryTemplates.length} mẫu trong kho
-                        </span>
-                      </div>
-                      <CustomDropdown
-                        value={bulkReelTemplateId}
-                        onChange={(val) => {
-                          setBulkReelTemplateId(val);
-                          if (bulkVideoEngine !== 'text_story') {
-                            setBulkVideoEngine('text_story');
-                          }
-                        }}
-                        options={[
-                          { value: 'random', label: '🎲 Tự động chọn ngẫu nhiên mẫu (Khuyên dùng - Đa dạng bài đăng)' },
-                          ...bulkTextStoryTemplates.map(t => ({
-                            value: t.id,
-                            label: `📑 ${t.name}`
+                          { value: '', label: '🎵 Ngẫu nhiên từ Thư Viện Âm Thanh (Khuyên dùng)' },
+                          ...bulkBgmList.map(b => ({
+                            value: b.filename,
+                            label: `🎵 ${b.name} (${b.size_formatted})`
                           }))
                         ]}
                         className="w-full"
                       />
+                    </div>
+                  )}
+
+                  {/** Công Nghệ Tạo Video Reel & Mẫu Giao Diện (Tích hợp trọn gói trong 1 ô chọn) */}
+                  {(bulkPostFormat === 'reel' || bulkPostFormat === 'mixed') && (
+                    <div className="sm:col-span-2 bg-slate-900/60 p-3.5 rounded-xl border border-amber-500/25 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[16px]">movie_filter</span>
+                          <span>Công Nghệ Tạo Video Reel</span>
+                        </label>
+                        <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          {bulkTextStoryTemplates.length} Mẫu Text Story Reel Sẵn Sàng
+                        </span>
+                      </div>
+                      <CustomDropdown
+                        value={
+                          bulkVideoEngine === 'text_story'
+                            ? (bulkReelTemplateId && bulkReelTemplateId !== 'random' ? `text_story:${bulkReelTemplateId}` : 'text_story:random')
+                            : bulkVideoEngine
+                        }
+                        onChange={(val: string) => {
+                          if (val.startsWith('text_story:')) {
+                            setBulkVideoEngine('text_story');
+                            const tplId = val.replace('text_story:', '');
+                            setBulkReelTemplateId(tplId);
+                          } else if (val === 'hook_image') {
+                            setBulkVideoEngine('hook_image');
+                            setBulkReelTemplateId('random');
+                          } else if (val === 'muse') {
+                            setBulkVideoEngine('muse');
+                            setBulkReelTemplateId('random');
+                          }
+                        }}
+                        options={[
+                          {
+                            value: 'text_story:random',
+                            label: '🎲 Text Story Reel: Tự Động Ngẫu Nhiên Mẫu (Ưu tiên mẫu chưa dùng - Khuyên dùng)'
+                          },
+                          ...bulkTextStoryTemplates.map(t => ({
+                            value: `text_story:${t.id}`,
+                            label: `📑 Text Story: ${t.name}`
+                          })),
+                          {
+                            value: 'hook_image',
+                            label: '🖼️ Tạo từ Ảnh Hook & Âm Nhạc (Sắc nét 1080x1920 10s - Cổ điển)'
+                          },
+                          {
+                            value: 'muse',
+                            label: '🤖 Tạo bằng Motion AI (Muse Motion Reel)'
+                          }
+                        ]}
+                        className="w-full"
+                      />
                       <p className="text-[11px] text-fb-text-muted leading-relaxed">
-                        {bulkVideoEngine === 'text_story'
-                          ? (bulkReelTemplateId === 'random'
-                              ? '✅ Đang kích hoạt: Mỗi video Text Story của các Page được chọn sẽ tự động lấy ngẫu nhiên 1 mẫu trong kho (50+ mẫu đa màu sắc, không trùng lặp).'
-                              : '✅ Đang kích hoạt: Cố định áp dụng mẫu giao diện này cho toàn bộ video Text Story của các Fanpage được chọn.')
-                          : '💡 Gợi ý: Khi chọn công nghệ tạo video "Text Story Reel" ở trên, mẫu giao diện này sẽ được áp dụng cho toàn bộ Fanpage được chọn.'}
+                        {bulkVideoEngine === 'text_story' && (bulkReelTemplateId === 'random' || !bulkReelTemplateId) && (
+                          <span className="text-emerald-400 font-medium flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                            <span><b>Chế độ thông minh:</b> Hệ thống sẽ tự động ưu tiên chọn các mẫu Text Story <b>chưa từng sử dụng</b> hoặc <b>ít sử dụng nhất</b> trên từng Fanpage trước.</span>
+                          </span>
+                        )}
+                        {bulkVideoEngine === 'text_story' && bulkReelTemplateId && bulkReelTemplateId !== 'random' && (
+                          <span className="text-cyan-400 font-medium">
+                            📑 <b>Cố định mẫu:</b> Toàn bộ video Text Story của các Fanpage được chọn sẽ dùng duy nhất mẫu giao diện này.
+                          </span>
+                        )}
+                        {bulkVideoEngine === 'hook_image' && (
+                          <span>Tự động dùng ảnh 2K kết hợp kịch bản Hook 3 đoạn do AI tạo và hòa âm nhạc nền 10s cực nét.</span>
+                        )}
+                        {bulkVideoEngine === 'muse' && (
+                          <span>Đưa bài viết vào hàng đợi để Worker Motion AI ngoài xử lý chuyển động.</span>
+                        )}
                       </p>
                     </div>
                   )}
                 </div>
-
-                {(bulkPostFormat === 'reel' || bulkPostFormat === 'mixed') && (
-                  <div>
-                    <label className="block text-xs font-bold text-fb-text mb-1.5">
-                      Nhạc Nền Video Reel (BGM)
-                    </label>
-                    <CustomDropdown
-                      value={bulkDefaultBgm}
-                      onChange={(val) => setBulkDefaultBgm(val)}
-                      options={[
-                        { value: '', label: '🎵 Ngẫu nhiên từ Thư Viện Âm Thanh (Khuyên dùng)' },
-                        ...bulkBgmList.map(b => ({
-                          value: b.filename,
-                          label: `🎵 ${b.name} (${b.size_formatted})`
-                        }))
-                      ]}
-                      className="w-full"
-                    />
-                  </div>
-                )}
               </div>
 
               {/** PHẦN 2: CHỌN SỐ LƯỢNG BÀI ĐĂNG 1 NGÀY */}

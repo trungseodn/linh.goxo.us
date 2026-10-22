@@ -381,16 +381,77 @@ export class ZTTeamHookVideoService {
           chosenTemplate = dbTemplates.find((t) => t.id === assignedTemplateId);
         }
 
-        /** Nếu chế độ Random hoặc chưa chọn mẫu: Random tự động chọn 1 mẫu cho bài viết */
+        /** Nếu chế độ Random hoặc chưa chọn mẫu: ƯU TIÊN CHỌN MẪU ÍT HOẶC CHƯA SỬ DỤNG TRÊN FANPAGE NÀY TRƯỚC */
         if (!chosenTemplate && dbTemplates.length > 0) {
-          const postSeed = String(imageRecord.wp_post_id || imageRecord.id || 'seed');
+          const targetPageId = imageRecord.page_id || imageRecord.page?.id || 'default_page';
+
+          // 1. Thu thập thống kê số lần sử dụng của từng mẫu trên Page này và toàn hệ thống
+          let minPageUses = Infinity;
+          const templateStats = dbTemplates.map((t) => {
+            const l = (t.layout || {}) as any;
+            const pageUses = Number(l.pageUsage?.[targetPageId] || 0);
+            const globalUses = Number(l.useCount || 0);
+            if (pageUses < minPageUses) {
+              minPageUses = pageUses;
+            }
+            return { template: t, pageUses, globalUses };
+          });
+
+          // 2. Lọc tất cả các mẫu đạt số lần dùng ít nhất trên Page này (ưu tiên pageUses = 0 trước)
+          const leastPageCandidates = templateStats.filter((s) => s.pageUses === minPageUses);
+
+          // 3. Nếu có nhiều mẫu cùng ít dùng trên Page, lọc tiếp theo mẫu ít dùng nhất toàn cầu
+          let minGlobalUses = Infinity;
+          for (const c of leastPageCandidates) {
+            if (c.globalUses < minGlobalUses) {
+              minGlobalUses = c.globalUses;
+            }
+          }
+          const bestCandidates = leastPageCandidates.filter((c) => c.globalUses === minGlobalUses);
+
+          // 4. Trong nhóm ứng viên tối ưu nhất, chọn ngẫu nhiên bằng hash bài viết để phân bổ đều
+          const postSeed = String(imageRecord.wp_post_id || imageRecord.id || Date.now());
           let hash = 0;
           for (let i = 0; i < postSeed.length; i++) {
             hash = (hash << 5) - hash + postSeed.charCodeAt(i);
             hash |= 0;
           }
-          const randIndex = Math.abs(hash) % dbTemplates.length;
-          chosenTemplate = dbTemplates[randIndex];
+          const randIndex = Math.abs(hash) % bestCandidates.length;
+          chosenTemplate = bestCandidates[randIndex].template;
+
+          this.logger.log(
+            `[Text Story Reel] [Smart Rotation] Page "${pageName}" (Post: ${imageRecord.wp_post_id}) tự động chọn mẫu "${chosenTemplate.name}" (Lần dùng trên Page: ${minPageUses}, Toàn hệ thống: ${minGlobalUses}, Ứng viên: ${bestCandidates.length}/${dbTemplates.length})`
+          );
+        }
+
+        // Cập nhật số lần sử dụng của mẫu vừa được chọn để các bài tiếp theo ưu tiên các mẫu khác
+        if (chosenTemplate?.id) {
+          try {
+            const targetPageId = imageRecord.page_id || imageRecord.page?.id || 'default_page';
+            const curLayout = (chosenTemplate.layout || {}) as any;
+            const curPageUsage = curLayout.pageUsage || {};
+            const newPageCount = Number(curPageUsage[targetPageId] || 0) + 1;
+            const newGlobalCount = Number(curLayout.useCount || 0) + 1;
+
+            await this.prisma.ztteam_templates.update({
+              where: { id: chosenTemplate.id },
+              data: {
+                layout: {
+                  ...curLayout,
+                  useCount: newGlobalCount,
+                  pageUsage: {
+                    ...curPageUsage,
+                    [targetPageId]: newPageCount,
+                  },
+                  lastUsedAt: new Date().toISOString(),
+                  lastUsedPageId: targetPageId,
+                  lastUsedPageName: pageName,
+                },
+              },
+            });
+          } catch (err: any) {
+            this.logger.warn(`Không thể cập nhật useCount cho template ${chosenTemplate.id}: ${err.message}`);
+          }
         }
 
         const layout = (chosenTemplate?.layout || {}) as any;

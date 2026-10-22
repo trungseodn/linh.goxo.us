@@ -837,63 +837,74 @@ export default function FacebookPageSettings() {
                         <span className="material-symbols-outlined text-[16px]">movie_filter</span>
                         Công nghệ tạo Video Reel
                       </label>
-                      <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                        Chuẩn Sắc Nét 2K
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => navigate('/reel-templates')}
+                          className="text-[11px] font-bold text-fb-blue hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Kho Giao Diện ({textStoryTemplates.length} mẫu)</span>
+                          <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                        </button>
+                      </div>
                     </div>
                     <CustomDropdown
-                      value={videoEngine}
-                      onChange={setVideoEngine}
+                      value={
+                        videoEngine === 'text_story'
+                          ? (defaultReelTemplateId && defaultReelTemplateId !== 'random' ? `text_story:${defaultReelTemplateId}` : 'text_story:random')
+                          : videoEngine
+                      }
+                      onChange={(val: string) => {
+                        if (val.startsWith('text_story:')) {
+                          setVideoEngine('text_story');
+                          const tplId = val.replace('text_story:', '');
+                          setDefaultReelTemplateId(tplId);
+                        } else if (val === 'hook_image') {
+                          setVideoEngine('hook_image');
+                          setDefaultReelTemplateId('random');
+                        } else if (val === 'muse') {
+                          setVideoEngine('muse');
+                          setDefaultReelTemplateId('random');
+                        }
+                      }}
                       options={[
-                        { value: 'hook_image', label: 'Tạo từ Ảnh Hook & Âm Nhạc (Sắc nét 1080x1920 10s - Mặc định)' },
-                        { value: 'text_story', label: 'Text Story Reel (Kính Mờ Frosted Glass 9:16, Censor Tên Page, Đọc Kịch Tính 10s)' },
-                        { value: 'muse', label: 'Tạo bằng Motion AI (Muse Motion Reel)' }
+                        {
+                          value: 'text_story:random',
+                          label: '🎲 Text Story Reel: Tự Động Ngẫu Nhiên Mẫu (Ưu tiên mẫu chưa dùng - Khuyên dùng)'
+                        },
+                        ...textStoryTemplates.map((t: any) => ({
+                          value: `text_story:${t.id}`,
+                          label: `📑 Text Story: ${t.name}`
+                        })),
+                        {
+                          value: 'hook_image',
+                          label: '🖼️ Tạo từ Ảnh Hook & Âm Nhạc (Sắc nét 1080x1920 10s - Mặc định)'
+                        },
+                        {
+                          value: 'muse',
+                          label: '🤖 Tạo bằng Motion AI (Muse Motion Reel)'
+                        }
                       ]}
                     />
                     <p className="text-[11px] text-fb-text-muted mt-1.5 leading-relaxed">
-                      {videoEngine === 'hook_image' 
-                        ? 'Tự động sử dụng ảnh 2K kết hợp kịch bản Hook 3 đoạn kịch tính do AI tạo bám sát bài viết gốc, font Montserrat và hòa âm nhạc nền 10s cực nét.'
-                        : videoEngine === 'text_story'
-                        ? 'Định dạng Text Story lan truyền: Card kính mờ Frosted Glass 9:16 cao 1575px, che mờ tên Fanpage, font Barlow Condensed sắc nét, highlight từ khóa vàng kịch tính và zoom Ken Burns 10s.'
-                        : 'Đưa bài viết vào hàng đợi để Worker ngoài xử lý chuyển động bằng Muse Motion AI.'
-                      }
+                      {videoEngine === 'text_story' && (defaultReelTemplateId === 'random' || !defaultReelTemplateId) && (
+                        <span className="text-emerald-400 font-medium flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                          <span><b>Chế độ thông minh:</b> Hệ thống sẽ tự động ưu tiên chọn các mẫu Text Story <b>chưa từng sử dụng</b> hoặc <b>ít sử dụng nhất</b> trên Fanpage này trước để bài đăng luôn đa dạng sắc thái.</span>
+                        </span>
+                      )}
+                      {videoEngine === 'text_story' && defaultReelTemplateId && defaultReelTemplateId !== 'random' && (
+                        <span className="text-cyan-400 font-medium">
+                          📑 <b>Cố định mẫu:</b> Toàn bộ video Text Story của Fanpage này sẽ sử dụng cố định mẫu giao diện đã chọn.
+                        </span>
+                      )}
+                      {videoEngine === 'hook_image' && (
+                        <span>Tự động sử dụng ảnh 2K kết hợp kịch bản Hook 3 đoạn kịch tính do AI tạo bám sát bài viết gốc, font Montserrat và hòa âm nhạc nền 10s cực nét.</span>
+                      )}
+                      {videoEngine === 'muse' && (
+                        <span>Đưa bài viết vào hàng đợi để Worker ngoài xử lý chuyển động bằng Muse Motion AI.</span>
+                      )}
                     </p>
-
-                    {videoEngine === 'text_story' && (
-                      <div className="mt-3 pt-3 border-t border-fb-surface-hover/50 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="block text-xs font-bold text-emerald-400 uppercase tracking-wide flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[16px]">style</span>
-                            Mẫu Giao Diện Text Story (Reel Template)
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => navigate('/reel-templates')}
-                            className="text-[11px] font-bold text-fb-blue hover:underline flex items-center gap-1 cursor-pointer"
-                          >
-                            <span>Kho Giao Diện</span>
-                            <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-                          </button>
-                        </div>
-                        <CustomDropdown
-                          value={defaultReelTemplateId}
-                          onChange={setDefaultReelTemplateId}
-                          options={[
-                            { value: 'random', label: '🎲 Tự động chọn ngẫu nhiên mẫu (Khuyên dùng - Đa dạng bài đăng)' },
-                            ...textStoryTemplates.map((t: any) => ({
-                              value: t.id,
-                              label: `📑 ${t.name}`
-                            }))
-                          ]}
-                        />
-                        <p className="text-[11px] text-fb-text-muted leading-relaxed">
-                          {defaultReelTemplateId === 'random'
-                            ? 'Mỗi bài viết video Text Story của Page này sẽ tự động được chọn ngẫu nhiên một mẫu giao diện từ Kho Mẫu (Text Story Reel), giúp bảng tin luôn mới lạ, đa dạng sắc thái.'
-                            : 'Cố định sử dụng mẫu giao diện này cho tất cả video Text Story của Fanpage.'
-                          }
-                        </p>
-                      </div>
-                    )}
                   </div>
 
                   {/** Nhạc nền Reel (BGM) */}
