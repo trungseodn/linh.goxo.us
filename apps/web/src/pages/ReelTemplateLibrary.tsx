@@ -3,251 +3,269 @@ import api from '../services/api';
 import { useUIStore } from '../stores/uiStore';
 import CustomDropdown from '../components/CustomDropdown';
 
-export interface ZTTeamTextStoryPreset {
+/**
+ * 6 Bộ màu sắc Dark Seamless cao cấp, điện ảnh cho Text Story Reel
+ * TUYỆT ĐỐI KHÔNG SỬ DỤNG MÀU HỒNG VÀ TÍM (Theo user rules & AGENTS.md)
+ */
+export interface ZTTeamColorPreset {
   id: string;
   name: string;
-  tagline: string;
   badge: string;
-  themeStyle: 'midnight_dark' | 'frosted_pastel' | 'reading_corner';
-  authorName: string;
-  authorSubtitle: string;
-  authorSubmeta2?: string;
-  avatarUrl: string;
-  avatarBorderColor: string;
-  hasVerified: boolean;
-  hasFollowBtn: boolean;
-  isCensoredName: boolean;
+  desc: string;
   bgGradient: string;
-  bgImage?: string;
   cardBg: string;
   cardBorder: string;
   cardShadow: string;
-  cardBackdropBlur: string;
-  textColor: string;
-  hookColor: string;
   hlColor: string;
-  ctaText: string;
+  hookColor: string;
   ctaColor: string;
-  hasBottomPill: boolean;
-  bottomPillText: string;
-  bottomPillColor: string;
-  storyTitle: string;
-  storyContent: string;
-  highlightPhrases: string[];
-  fontSize: number;
-  lineHeight: number;
+  textColor: string;
 }
 
-const ZTTEAM_STORY_PRESETS: ZTTeamTextStoryPreset[] = [
+export const ZTTEAM_TEXT_STORY_PALETTES: ZTTeamColorPreset[] = [
   {
-    id: 'preset_midnight_derek',
-    name: 'Midnight Dark Story (Derek West)',
-    tagline: 'Card xanh đen phát sáng, tích xanh Facebook, chữ vàng hổ phách huyền ảo',
-    badge: 'Mẫu 1 • Dark Glow',
-    themeStyle: 'midnight_dark',
-    authorName: 'Derek West',
-    authorSubtitle: '4hrs ago · A Text Story',
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=250&q=80',
-    avatarBorderColor: '#38bdf8',
-    hasVerified: true,
-    hasFollowBtn: false,
-    isCensoredName: false,
+    id: 'midnight_sapphire',
+    name: 'Midnight Sapphire (Xanh Thẳm Huyền Bí)',
+    badge: 'Sapphire Glow',
+    desc: 'Card xanh đen phát sáng, chữ vàng hổ phách nổi bật, ánh sáng xanh huyền ảo',
     bgGradient: 'radial-gradient(ellipse at 85% 15%, #05264a 0%, #031226 40%, #01060f 100%)',
-    cardBg: 'rgba(5, 19, 41, 0.72)',
+    cardBg: 'rgba(5, 19, 41, 0.76)',
     cardBorder: '1.5px solid rgba(56, 189, 248, 0.35)',
     cardShadow: '0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(56, 189, 248, 0.22)',
-    cardBackdropBlur: 'blur(20px)',
-    textColor: '#e2e8f0',
-    hookColor: '#fbbf24',
     hlColor: '#fbbf24',
-    ctaText: 'Continue Reading...',
+    hookColor: '#fbbf24',
     ctaColor: '#38bdf8',
-    hasBottomPill: false,
-    bottomPillText: '',
-    bottomPillColor: '#22c55e',
-    storyTitle: 'My parents demanded 50% of my salary, so I gave them exactly what they asked for.',
-    storyContent: `My parents demanded 50% of my salary, so I gave them exactly what they asked for. The day after discovering how much I earned, my parents showed up at my apartment—with a calculator. Dad sat down and announced, "Half your monthly income is fair. We raised you." Mom nodded. "It's time you gave back." They forgot all the years I had spent paying their bills, covering their rent, and watching my own dreams disappear while they spent my money. Then Dad placed a "family support agreement" in front of me. My name was already typed on the signature line. I didn't argue. I simply walked to my desk and returned with an envelope. "Fine," I said. "Here's what I owe you." Mom opened it. Her smile vanished. Dad stopped breathing. Because inside was something they had never expected to see...`,
-    highlightPhrases: [
-      '50% of my salary',
-      'The day after discovering how much I earned',
-      'They forgot all the years I had spent paying their bills',
-      'Because inside was something they had never expected to see...'
-    ],
-    fontSize: 14,
-    lineHeight: 1.35,
+    textColor: '#e2e8f0',
   },
   {
-    id: 'preset_frosted_ruthie',
-    name: 'Frosted Glass Pastel (Ruthie Bannsor)',
-    tagline: 'Kính mờ cao cấp Frosted Glassmorphism, nền Pastel mềm mại, chữ đen sắc nét',
-    badge: 'Mẫu 2 • Frosted Glass',
-    themeStyle: 'frosted_pastel',
-    authorName: 'Ruthie Bannsor',
-    authorSubtitle: '14 hours ago · 👥 Tales.com',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
-    avatarBorderColor: '#94a3b8',
-    hasVerified: false,
-    hasFollowBtn: false,
-    isCensoredName: true,
-    bgGradient: 'linear-gradient(135deg, #e0e7ff 0%, #fae8ff 50%, #dbeafe 100%)',
-    cardBg: 'rgba(255, 255, 255, 0.88)',
-    cardBorder: '1.5px solid rgba(255, 255, 255, 0.95)',
-    cardShadow: '0 25px 60px rgba(0, 0, 0, 0.18), 0 4px 20px rgba(255, 255, 255, 0.4)',
-    cardBackdropBlur: 'blur(30px)',
-    textColor: '#0f172a',
-    hookColor: '#1e3a8a',
-    hlColor: '#2563eb',
-    ctaText: '... Continue Reading',
-    ctaColor: '#1e3a8a',
-    hasBottomPill: false,
-    bottomPillText: '',
-    bottomPillColor: '#22c55e',
-    storyTitle: 'My neighbor Gene called me at 6 in the morning: "Ruthie, look out your back window"',
-    storyContent: `My neighbor Gene called me at 6 in the morning: "Ruthie, look out your back window - slow, and don't turn the light on. Been going on since before five. Just look" I shuffled to the window in the dark, pulled the curtain back an inch, looked out at my own back fence - and I had to sit right down on the kitchen floor.
-
-I'm 72, and I sleep like the dead. My Harold used to say a freight train could roll through the bedroom and I'd ask it to keep the noise down. So whatever'd been happening back there in the dark, all these mornings, I'd slept clean through every bit of it.
-
-I didn't call the police, not yet. I made my coffee with hands that weren't quite steady, got dressed, and waited for the sun, calm as could be.
-
-Because I knew that back corner of my property – the survey stakes, the old oak, the fence line my Harold put in himself in 1985.
-
-And what those men were doing out there wasn't right. So the minute it was light, I put on my coat and started walking right up to them... to them ...`,
-    highlightPhrases: [
-      'at 6 in the morning:',
-      'look out your back window',
-      'had to sit right down on the kitchen floor.',
-      'sleep like the dead.',
-      'slept clean through every bit of it.',
-      "didn't call the police, not yet.",
-      'fence line my Harold put in himself in 1985.',
-      "wasn't right.",
-      'walking right up to them... to them ...'
-    ],
-    fontSize: 13.5,
-    lineHeight: 1.32,
+    id: 'emerald_shadow',
+    name: 'Emerald Shadow (Lục Bảo Quyền Quý)',
+    badge: 'Emerald Deep',
+    desc: 'Sắc ngọc lục bảo sâu thẳm, viền xanh phát sáng, highlight xanh ngọc ánh kim',
+    bgGradient: 'radial-gradient(ellipse at 80% 20%, #062b1e 0%, #021a11 45%, #010a06 100%)',
+    cardBg: 'rgba(4, 28, 19, 0.78)',
+    cardBorder: '1.5px solid rgba(52, 211, 153, 0.35)',
+    cardShadow: '0 25px 60px rgba(0, 0, 0, 0.92), 0 0 35px rgba(16, 185, 129, 0.25)',
+    hlColor: '#34d399',
+    hookColor: '#a7f3d0',
+    ctaColor: '#6ee7b7',
+    textColor: '#f1f5f9',
   },
   {
-    id: 'preset_reading_mauro',
-    name: 'Reading Corner Cinema (Mauro)',
-    tagline: 'Viền vàng ánh kim, nút + Follow Facebook, highlight vàng chanh, Banner đáy CTA',
-    badge: 'Mẫu 3 • Viral Hook & Follow',
-    themeStyle: 'reading_corner',
-    authorName: 'READING CORNER',
-    authorSubtitle: '2hrs ago • 🌐',
-    authorSubmeta2: 'Real Story 🔍',
-    avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=250&q=80',
-    avatarBorderColor: '#eab308',
-    hasVerified: false,
-    hasFollowBtn: true,
-    isCensoredName: false,
-    bgGradient: 'radial-gradient(circle at 50% 25%, #1c1103 0%, #080501 55%, #020100 100%)',
-    cardBg: 'rgba(12, 10, 8, 0.76)',
+    id: 'obsidian_gold',
+    name: 'Obsidian Gold (Vàng Kim Hoàng Gia)',
+    badge: 'Obsidian Gold',
+    desc: 'Đen gỗ mun huyền bí kết hợp ánh vàng kim hoàng gia, highlight vàng chanh kịch tính',
+    bgGradient: 'radial-gradient(ellipse at 75% 20%, #2a1a08 0%, #0f0a04 45%, #030201 100%)',
+    cardBg: 'rgba(18, 12, 6, 0.82)',
     cardBorder: '1.8px solid rgba(234, 179, 8, 0.45)',
     cardShadow: '0 25px 65px rgba(0, 0, 0, 0.95), 0 0 35px rgba(234, 179, 8, 0.25)',
-    cardBackdropBlur: 'blur(24px)',
-    textColor: '#f8fafc',
-    hookColor: '#fde047',
     hlColor: '#fde047',
-    ctaText: 'Continue Reading...',
-    ctaColor: '#eab308',
-    hasBottomPill: true,
-    bottomPillText: 'Full Story In Comment 👇',
-    bottomPillColor: '#22c55e',
-    storyTitle: 'My husband stole my platinum card to take his parents on a trip.',
-    storyContent: `My husband stole my platinum card to take his parents on a trip. When I canceled it, he yelled at me: 'Reactivate it right now or I'm divorcing you!', and his mother swore she'd kick me out of the house... I just laughed."
-"If you don't reactivate that card right now, I swear I'm cutting you out of my life by tomorrow!" That was the line Mauro shouted at me over the phone from the airport, not knowing that while he was making threats, I had already made the decision that would break his family apart forever.
-"Are you even listening to me, Re-becca?" he roared. "My mom is here, my dad is here, Jamie is crying, and you're leaving us stranded as if we were common..."`,
-    highlightPhrases: [
-      'platinum card to take his parents',
-      '"If you don\'t reactivate that card right now,',
-      '"Are you even listening to me, Re-becca?"'
-    ],
-    fontSize: 14.2,
-    lineHeight: 1.34,
+    hookColor: '#fde047',
+    ctaColor: '#fbbf24',
+    textColor: '#f8fafc',
   },
+  {
+    id: 'charcoal_slate',
+    name: 'Charcoal Slate (Xám Đen Hiện Đại & Censor)',
+    badge: 'Modern Slate',
+    desc: 'Đen than hoạt tính tối giản, che mờ tên bí ẩn, highlight vàng kim tương phản cao',
+    bgGradient: 'radial-gradient(ellipse at 70% 30%, #18181b 0%, #09090b 50%, #000000 100%)',
+    cardBg: 'rgba(24, 24, 27, 0.84)',
+    cardBorder: '1.5px solid rgba(148, 163, 184, 0.25)',
+    cardShadow: '0 25px 60px rgba(0, 0, 0, 0.95), 0 0 25px rgba(255, 255, 255, 0.08)',
+    hlColor: '#facc15',
+    hookColor: '#ffffff',
+    ctaColor: '#38bdf8',
+    textColor: '#f1f5f9',
+  },
+  {
+    id: 'royal_ocean',
+    name: 'Royal Ocean (Xanh Lam Biển Sâu)',
+    badge: 'Oceanic Deep',
+    desc: 'Xanh coban đại dương sâu thẳm, highlight xanh điện quang Neon sắc bén',
+    bgGradient: 'radial-gradient(ellipse at 80% 25%, #0c204c 0%, #040c1e 45%, #01040c 100%)',
+    cardBg: 'rgba(8, 18, 42, 0.80)',
+    cardBorder: '1.8px solid rgba(96, 165, 250, 0.38)',
+    cardShadow: '0 32px 85px rgba(0, 0, 0, 0.88), 0 0 45px rgba(37, 99, 235, 0.25)',
+    hlColor: '#38bdf8',
+    hookColor: '#93c5fd',
+    ctaColor: '#60a5fa',
+    textColor: '#e6edf5',
+  },
+  {
+    id: 'frosted_clean',
+    name: 'Frosted Glass Clean (Kính Mờ Tinh Tế)',
+    badge: 'Clean Glass',
+    desc: 'Thẻ kính mờ Frosted Glassmorphism đẳng cấp trên nền phiến đá đen, không hồng tím',
+    bgGradient: 'linear-gradient(135deg, #091e2f 0%, #0f172a 50%, #020617 100%)',
+    cardBg: 'rgba(30, 41, 59, 0.72)',
+    cardBorder: '1.5px solid rgba(255, 255, 255, 0.20)',
+    cardShadow: '0 25px 60px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 255, 255, 0.1)',
+    hlColor: '#38bdf8',
+    hookColor: '#38bdf8',
+    ctaColor: '#38bdf8',
+    textColor: '#f8fafc',
+  },
+];
+
+const DEFAULT_SAMPLE_STORY = `My parents demanded 50% of my salary, so I gave them exactly what they asked for. The day after discovering how much I earned, my parents showed up at my apartment—with a calculator. Dad sat down and announced, "Half your monthly income is fair. We raised you." Mom nodded. "It's time you gave back." They forgot all the years I had spent paying their bills, covering their rent, and watching my own dreams disappear while they spent my money. Then Dad placed a "family support agreement" in front of me. My name was already typed on the signature line. I didn't argue. I simply walked to my desk and returned with an envelope. "Fine," I said. "Here's what I owe you." Mom opened it. Her smile vanished. Dad stopped breathing. Because inside was something they had never expected to see...`;
+
+const DEFAULT_SAMPLE_HIGHLIGHTS = [
+  '50% of my salary',
+  'The day after discovering how much I earned',
+  'They forgot all the years I had spent paying their bills',
+  'Because inside was something they had never expected to see...',
 ];
 
 export default function ReelTemplateLibrary() {
   const { ztteam_showToast, ztteam_showConfirm } = useUIStore();
 
-  /** State preset đang được kích hoạt */
-  const [selectedPresetId, setSelectedPresetId] = useState<string>('preset_midnight_derek');
-  const currentPreset = ZTTEAM_STORY_PRESETS.find((p) => p.id === selectedPresetId) || ZTTEAM_STORY_PRESETS[0];
+  /** Danh sách Template đã lưu trong Database */
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
-  /** Tùy biến cục bộ */
-  const [authorName, setAuthorName] = useState(currentPreset.authorName);
-  const [authorSubtitle, setAuthorSubtitle] = useState(currentPreset.authorSubtitle);
-  const [authorSubmeta2, setAuthorSubmeta2] = useState(currentPreset.authorSubmeta2 || '');
-  const [avatarUrl, setAvatarUrl] = useState(currentPreset.avatarUrl);
-  const [hasVerified, setHasVerified] = useState(currentPreset.hasVerified);
-  const [hasFollowBtn, setHasFollowBtn] = useState(currentPreset.hasFollowBtn);
-  const [isCensoredName, setIsCensoredName] = useState(currentPreset.isCensoredName);
-  const [storyContent, setStoryContent] = useState(currentPreset.storyContent);
-  const [highlightInput, setHighlightInput] = useState(currentPreset.highlightPhrases.join('\n'));
-  const [hlColor, setHlColor] = useState(currentPreset.hlColor);
-  const [ctaText, setCtaText] = useState(currentPreset.ctaText);
-  const [hasBottomPill, setHasBottomPill] = useState(currentPreset.hasBottomPill);
-  const [bottomPillText, setBottomPillText] = useState(currentPreset.bottomPillText || 'Full Story In Comment 👇');
-  const [fontSize, setFontSize] = useState(currentPreset.fontSize);
-  const [lineHeight, setLineHeight] = useState(currentPreset.lineHeight);
+  /** Form state tùy biến mẫu */
+  const [templateName, setTemplateName] = useState<string>('Text Story - Mẫu Tùy Chỉnh Mới');
+  const [bgGradient, setBgGradient] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].bgGradient);
+  const [cardBg, setCardBg] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].cardBg);
+  const [cardBorder, setCardBorder] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].cardBorder);
+  const [cardShadow, setCardShadow] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].cardShadow);
+  const [hlColor, setHlColor] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].hlColor);
+  const [hookColor, setHookColor] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].hookColor);
+  const [ctaColor, setCtaColor] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].ctaColor);
+  const [textColor, setTextColor] = useState<string>(ZTTEAM_TEXT_STORY_PALETTES[0].textColor);
+  const [ctaText, setCtaText] = useState<string>('Continue Reading...');
 
-  /** Fanpage List để gán mặc định */
+  /** Header & Branding */
+  const [authorName, setAuthorName] = useState<string>('Derek West');
+  const [authorSubtitle, setAuthorSubtitle] = useState<string>('4hrs ago · A Text Story');
+  const [hasVerified, setHasVerified] = useState<boolean>(true);
+  const [hasFollowBtn, setHasFollowBtn] = useState<boolean>(false);
+  const [isCensoredName, setIsCensoredName] = useState<boolean>(false);
+
+  /** Footer & Bottom Pill */
+  const [hasBottomPill, setHasBottomPill] = useState<boolean>(false);
+  const [bottomPillText, setBottomPillText] = useState<string>('Full Story In Comment 👇');
+
+  /** Typography & Text */
+  const [storyContent, setStoryContent] = useState<string>(DEFAULT_SAMPLE_STORY);
+  const [highlightInput, setHighlightInput] = useState<string>(DEFAULT_SAMPLE_HIGHLIGHTS.join('\n'));
+  const [fontSize, setFontSize] = useState<number>(14);
+  const [lineHeight, setLineHeight] = useState<number>(1.35);
+
+  /** Fanpage List để xem thử & Gán */
   const [pages, setPages] = useState<any[]>([]);
+  const [previewPageId, setPreviewPageId] = useState<string>('');
   const [selectedPageForApply, setSelectedPageForApply] = useState<string>('');
   const [isApplying, setIsApplying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isRenderingTest, setIsRenderingTest] = useState(false);
-  const [testVideoUrl, setTestVideoUrl] = useState<string | null>(null);
 
   /** Active Tab Điều Khiển */
-  const [activeTab, setActiveTab] = useState<'branding' | 'text' | 'footer' | 'apply'>('branding');
+  const [activeTab, setActiveTab] = useState<'palette' | 'branding' | 'text' | 'footer' | 'apply'>('palette');
 
-  /** Đồng bộ khi đổi Preset */
+  /** Tải danh sách Template và Fanpage */
   useEffect(() => {
-    setAuthorName(currentPreset.authorName);
-    setAuthorSubtitle(currentPreset.authorSubtitle);
-    setAuthorSubmeta2(currentPreset.authorSubmeta2 || '');
-    setAvatarUrl(currentPreset.avatarUrl);
-    setHasVerified(currentPreset.hasVerified);
-    setHasFollowBtn(currentPreset.hasFollowBtn);
-    setIsCensoredName(currentPreset.isCensoredName);
-    setStoryContent(currentPreset.storyContent);
-    setHighlightInput(currentPreset.highlightPhrases.join('\n'));
-    setHlColor(currentPreset.hlColor);
-    setCtaText(currentPreset.ctaText);
-    setHasBottomPill(currentPreset.hasBottomPill);
-    setBottomPillText(currentPreset.bottomPillText || 'Full Story In Comment 👇');
-    setFontSize(currentPreset.fontSize);
-    setLineHeight(currentPreset.lineHeight);
-    setTestVideoUrl(null);
-  }, [selectedPresetId]);
-
-  /** Tải danh sách Fanpage */
-  useEffect(() => {
-    const fetchPages = async () => {
-      try {
-        const res = await api.get('facebook/pages');
-        setPages(res.data || []);
-      } catch (err) {
-        /** ignore */
-      }
-    };
-    fetchPages();
+    ztteam_loadTemplates();
+    ztteam_loadPages();
   }, []);
 
-  /** Tách danh sách từ khóa highlight */
+  const ztteam_loadTemplates = async () => {
+    try {
+      setIsLoadingTemplates(true);
+      const res = await api.get('templates?format=video');
+      if (Array.isArray(res.data)) {
+        const textStories = res.data.filter((t: any) => t.content_type === 'text_story');
+        setTemplates(textStories);
+        if (textStories.length > 0 && !selectedTemplateId) {
+          ztteam_populateTemplate(textStories[0]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  const ztteam_loadPages = async () => {
+    try {
+      const res = await api.get('facebook/pages');
+      setPages(res.data || []);
+    } catch (err) {
+      /** ignore */
+    }
+  };
+
+  /** Nạp thông tin template vào Editor */
+  const ztteam_populateTemplate = (tpl: any) => {
+    setSelectedTemplateId(tpl.id);
+    setTemplateName(tpl.name || 'Text Story Mẫu');
+    const layout = tpl.layout || {};
+
+    setBgGradient(layout.bgGradient || ZTTEAM_TEXT_STORY_PALETTES[0].bgGradient);
+    setCardBg(layout.cardBg || ZTTEAM_TEXT_STORY_PALETTES[0].cardBg);
+    setCardBorder(layout.cardBorder || ZTTEAM_TEXT_STORY_PALETTES[0].cardBorder);
+    setCardShadow(layout.cardShadow || ZTTEAM_TEXT_STORY_PALETTES[0].cardShadow);
+    setHlColor(layout.hlColor || ZTTEAM_TEXT_STORY_PALETTES[0].hlColor);
+    setHookColor(layout.hookColor || ZTTEAM_TEXT_STORY_PALETTES[0].hookColor);
+    setCtaColor(layout.ctaColor || ZTTEAM_TEXT_STORY_PALETTES[0].ctaColor);
+    setTextColor(layout.textColor || ZTTEAM_TEXT_STORY_PALETTES[0].textColor);
+    setCtaText(layout.ctaText || 'Continue Reading...');
+
+    setAuthorName(layout.authorName || 'Derek West');
+    setAuthorSubtitle(layout.authorSubtitle || '4hrs ago · A Text Story');
+    setHasVerified(layout.hasVerified !== undefined ? Boolean(layout.hasVerified) : true);
+    setHasFollowBtn(layout.hasFollowBtn !== undefined ? Boolean(layout.hasFollowBtn) : false);
+    setIsCensoredName(layout.isCensoredName !== undefined ? Boolean(layout.isCensoredName) : false);
+
+    setHasBottomPill(layout.hasBottomPill !== undefined ? Boolean(layout.hasBottomPill) : false);
+    setBottomPillText(layout.bottomPillText || 'Full Story In Comment 👇');
+    setFontSize(layout.fontSize || 14);
+    setLineHeight(layout.lineHeight || 1.35);
+  };
+
+  /** Tạo Mẫu Mới */
+  const ztteam_handleNewTemplate = () => {
+    setSelectedTemplateId(null);
+    setTemplateName('Text Story - Mẫu Mới Tùy Chỉnh');
+    ztteam_applyColorPreset(ZTTEAM_TEXT_STORY_PALETTES[0]);
+    setAuthorName('ZTTeam Channel');
+    setAuthorSubtitle('2hrs ago · Viral Reel');
+    setHasVerified(true);
+    setHasFollowBtn(false);
+    setIsCensoredName(false);
+    setHasBottomPill(false);
+    setBottomPillText('Full Story In Comment 👇');
+    setCtaText('Continue Reading...');
+    ztteam_showToast('Đã chuyển sang chế độ tạo mẫu mới', 'info');
+  };
+
+  /** Áp dụng 1 bộ màu có sẵn */
+  const ztteam_applyColorPreset = (preset: ZTTeamColorPreset) => {
+    setBgGradient(preset.bgGradient);
+    setCardBg(preset.cardBg);
+    setCardBorder(preset.cardBorder);
+    setCardShadow(preset.cardShadow);
+    setHlColor(preset.hlColor);
+    setHookColor(preset.hookColor);
+    setCtaColor(preset.ctaColor);
+    setTextColor(preset.textColor);
+    ztteam_showToast(`Đã áp dụng bộ màu: ${preset.name}`, 'success');
+  };
+
+  /** Xử lý highlight từ khóa */
   const highlightPhrases = highlightInput
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean);
 
-  /** Render văn bản có highlight thông minh */
   const ztteam_renderHighlightedText = (text: string) => {
     if (!highlightPhrases || highlightPhrases.length === 0) {
       return <span>{text}</span>;
     }
 
-    // Sắp xếp các cụm từ highlight dài hơn lên trước để tránh xung đột
     const sortedPhrases = [...highlightPhrases].sort((a, b) => b.length - a.length);
     const escaped = sortedPhrases.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
     if (!escaped) return <span>{text}</span>;
@@ -272,7 +290,92 @@ export default function ReelTemplateLibrary() {
     });
   };
 
-  /** Áp dụng mẫu Text Story cho Fanpage */
+  /** Tính toán hiển thị xem trước với Fanpage thực tế */
+  const previewPage = pages.find((p) => p.id === previewPageId || p.fb_page_id === previewPageId);
+  const displayAuthorName = previewPage ? previewPage.name : authorName;
+  const displayAvatar = previewPage?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150';
+
+  /** Lưu / Cập nhật template */
+  const ztteam_saveTemplate = async () => {
+    try {
+      setIsSaving(true);
+      const payload = {
+        name: templateName.trim() || 'Text Story Mẫu',
+        format: 'video',
+        content_type: 'text_story',
+        layout: {
+          bgGradient,
+          cardBg,
+          cardBorder,
+          cardShadow,
+          hlColor,
+          hookColor,
+          ctaColor,
+          textColor,
+          ctaText,
+          authorName,
+          authorSubtitle,
+          hasVerified,
+          hasFollowBtn,
+          isCensoredName,
+          hasBottomPill,
+          bottomPillText,
+          fontSize,
+          lineHeight,
+        },
+      };
+
+      if (selectedTemplateId) {
+        await api.put(`templates/${selectedTemplateId}`, payload);
+        ztteam_showToast(`Đã cập nhật mẫu "${templateName}" thành công!`, 'success');
+      } else {
+        const res = await api.post('templates', payload);
+        setSelectedTemplateId(res.data?.id || null);
+        ztteam_showToast(`Đã lưu mẫu mới "${templateName}" vào Kho Giao Diện!`, 'success');
+      }
+      await ztteam_loadTemplates();
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || 'Lỗi khi lưu mẫu giao diện', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /** Nhân bản Template */
+  const ztteam_duplicateTemplate = async (tplId: string) => {
+    try {
+      setIsSaving(true);
+      const res = await api.post(`templates/${tplId}/duplicate`, {});
+      ztteam_showToast('Đã nhân bản mẫu thành công!', 'success');
+      await ztteam_loadTemplates();
+      if (res.data) {
+        ztteam_populateTemplate(res.data);
+      }
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || 'Lỗi khi nhân bản mẫu', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /** Xóa Template */
+  const ztteam_deleteTemplate = async (tpl: any) => {
+    const confirmed = await ztteam_showConfirm(
+      'Xóa mẫu giao diện',
+      `Bạn có chắc chắn muốn xóa mẫu "${tpl.name}" khỏi Kho Giao Diện Reel không?`
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`templates/${tpl.id}`);
+      ztteam_showToast(`Đã xóa mẫu "${tpl.name}" thành công!`, 'success');
+      await ztteam_loadTemplates();
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || 'Lỗi khi xóa mẫu', 'error');
+    }
+  };
+
+  /** Gán mẫu cho Fanpage */
   const ztteam_applyToFanpage = async () => {
     if (!selectedPageForApply) {
       ztteam_showToast('Vui lòng chọn Fanpage muốn áp dụng', 'error');
@@ -280,8 +383,8 @@ export default function ReelTemplateLibrary() {
     }
 
     const confirmed = await ztteam_showConfirm(
-      'Áp dụng mẫu giao diện',
-      `Bạn có muốn thiết lập Fanpage này sử dụng công nghệ Text Story Reel với giao diện "${currentPreset.name}" không?`
+      'Áp dụng mẫu giao diện cho Fanpage',
+      `Bạn có muốn thiết lập Fanpage này sử dụng công nghệ Text Story Reel với mẫu "${templateName}" không?`
     );
     if (!confirmed) return;
 
@@ -289,44 +392,13 @@ export default function ReelTemplateLibrary() {
       setIsApplying(true);
       await api.put(`facebook/pages/${selectedPageForApply}/settings`, {
         video_engine: 'text_story',
+        default_reel_template_id: selectedTemplateId || null,
       });
-      ztteam_showToast(`Đã áp dụng mẫu "${currentPreset.name}" cho Fanpage thành công!`, 'success');
+      ztteam_showToast(`Đã gắn mẫu "${templateName}" cho Fanpage thành công!`, 'success');
     } catch (err: any) {
       ztteam_showToast(err.response?.data?.message || 'Lỗi khi áp dụng cho Fanpage', 'error');
     } finally {
       setIsApplying(false);
-    }
-  };
-
-  /** Lưu template vào hệ thống */
-  const ztteam_saveTemplate = async () => {
-    try {
-      setIsSaving(true);
-      await api.post('templates', {
-        name: `Text Story - ${currentPreset.name}`,
-        format: 'video',
-        content_type: 'text_story',
-        layout: {
-          presetId: selectedPresetId,
-          themeStyle: currentPreset.themeStyle,
-          authorName,
-          authorSubtitle,
-          hasVerified,
-          hasFollowBtn,
-          isCensoredName,
-          hlColor,
-          ctaText,
-          hasBottomPill,
-          bottomPillText,
-          fontSize,
-          lineHeight,
-        },
-      });
-      ztteam_showToast('Đã lưu cấu hình mẫu giao diện Reel thành công!', 'success');
-    } catch (err: any) {
-      ztteam_showToast(err.response?.data?.message || 'Lỗi khi lưu mẫu giao diện', 'error');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -337,92 +409,171 @@ export default function ReelTemplateLibrary() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/15 text-blue-400 border border-blue-500/30">
-              Viral Reel Studio
+              Text Story Reel Studio
             </span>
-            <span className="text-xs text-fb-text-muted">• Tỉ lệ 9:16 (1080x1920)</span>
+            <span className="text-xs text-fb-text-muted">• Tỉ lệ 9:16 (1080x1920 2K)</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-fb-text tracking-tight flex items-center gap-2.5">
             <span className="material-symbols-outlined text-cyan-400 text-3xl">auto_stories</span>
             Kho Giao Diện Reel (Text Story)
           </h2>
           <p className="text-xs sm:text-sm font-medium text-fb-text-muted mt-1 leading-relaxed max-w-3xl">
-            Bộ sưu tập các mẫu Text Story Reel lan truyền triệu view trên Facebook & TikTok: Khung kính mờ Frosted Glass, Tích xanh Verified, Nút Follow, Highlight từ khóa kịch tính và CTA chuyển đổi.
+            Tùy biến và lưu trữ kho mẫu giao diện Text Story Reel: Card kính mờ Frosted Glass, Tích xanh Verified, Nút Follow, Censor Tên Page, Highlight từ khóa AI kịch tính và chế độ Random tự động cho Fanpage.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
+            onClick={ztteam_handleNewTemplate}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-fb-surface-hover hover:bg-fb-surface-hover/80 text-fb-text rounded-xl text-xs font-bold transition-all border border-white/10 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[17px] text-cyan-400">add_circle</span>
+            <span>Tạo Mẫu Mới</span>
+          </button>
+
+          <button
+            type="button"
             onClick={ztteam_saveTemplate}
             disabled={isSaving}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-fb-blue to-cyan-500 hover:from-fb-blue-hover hover:to-cyan-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-fb-blue to-cyan-500 hover:from-fb-blue-hover hover:to-cyan-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-50"
           >
             <span className={`material-symbols-outlined text-[17px] ${isSaving ? 'animate-spin' : ''}`}>
               {isSaving ? 'sync' : 'save'}
             </span>
-            <span>{isSaving ? 'Đang lưu...' : 'Lưu Mẫu Này'}</span>
+            <span>{isSaving ? 'Đang lưu...' : selectedTemplateId ? 'Cập Nhật Mẫu' : 'Lưu Vào Kho Mẫu'}</span>
           </button>
         </div>
       </div>
 
-      {/** 2. Preset Selection Cards (3 Mẫu Chuẩn Theo Hình Ảnh) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {ZTTEAM_STORY_PRESETS.map((preset) => {
-          const isSelected = selectedPresetId === preset.id;
-          return (
-            <div
-              key={preset.id}
-              onClick={() => setSelectedPresetId(preset.id)}
-              className={`p-4 rounded-2xl cursor-pointer transition-all border relative flex flex-col justify-between ${
-                isSelected
-                  ? 'bg-fb-surface border-cyan-400/80 shadow-lg shadow-cyan-500/10 ring-2 ring-cyan-400/20'
-                  : 'bg-fb-surface/80 border-fb-surface-hover/60 hover:bg-fb-surface hover:border-white/20'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      isSelected
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
-                        : 'bg-fb-surface-hover text-fb-text-muted'
-                    }`}
-                  >
-                    {preset.badge}
-                  </span>
-                  {isSelected && (
-                    <span className="material-symbols-outlined text-cyan-400 text-xl">
-                      check_circle
-                    </span>
-                  )}
-                </div>
-                <h3 className="text-sm font-black text-fb-text tracking-wide">{preset.name}</h3>
-                <p className="text-[11px] text-fb-text-muted mt-1 leading-relaxed line-clamp-2">
-                  {preset.tagline}
-                </p>
-              </div>
+      {/** 2. DANH SÁCH MẪU TRONG KHO (LOAD TỪ DATABASE) */}
+      <div className="bg-fb-surface rounded-2xl p-5 shadow-lg border border-fb-surface-hover/60">
+        <div className="flex items-center justify-between mb-3.5">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-amber-400 text-xl">folder_special</span>
+            <h3 className="text-sm font-black text-fb-text uppercase tracking-wide">
+              Các Mẫu Đang Có Trong Kho ({templates.length})
+            </h3>
+          </div>
+          <span className="text-[11px] text-fb-text-muted">
+            Chọn 1 mẫu bên dưới để chỉnh sửa hoặc sao chép màu sắc
+          </span>
+        </div>
 
-              <div className="mt-4 pt-3 border-t border-fb-surface-hover/40 flex items-center justify-between text-[11px]">
-                <span className="text-fb-text-muted font-medium flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: preset.hlColor }} />
-                  <span>Highlight: {preset.hlColor}</span>
-                </span>
-                <span className="text-cyan-400 font-bold hover:underline">Xem trước ➔</span>
-              </div>
-            </div>
-          );
-        })}
+        {isLoadingTemplates ? (
+          <div className="py-6 text-center text-xs text-fb-text-muted flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined animate-spin text-fb-blue">sync</span>
+            <span>Đang nạp danh sách mẫu từ hệ thống...</span>
+          </div>
+        ) : templates.length === 0 ? (
+          <div className="py-6 text-center text-xs text-fb-text-muted">
+            Chưa có mẫu nào. Bấm "Tạo Mẫu Mới" ở trên để tạo mẫu đầu tiên.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+            {templates.map((tpl) => {
+              const isSelected = selectedTemplateId === tpl.id;
+              const tplHl = tpl.layout?.hlColor || '#fbbf24';
+              const tplBg = tpl.layout?.bgGradient || '#0f172a';
+
+              return (
+                <div
+                  key={tpl.id}
+                  onClick={() => ztteam_populateTemplate(tpl)}
+                  className={`p-3.5 rounded-xl cursor-pointer transition-all border relative flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-fb-surface-hover/90 border-cyan-400 shadow-lg shadow-cyan-500/10 ring-2 ring-cyan-400/25'
+                      : 'bg-fb-surface-hover/30 border-white/5 hover:bg-fb-surface-hover hover:border-white/20'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 shadow-xs"
+                          style={{ background: tplHl }}
+                          title={`Màu highlight: ${tplHl}`}
+                        />
+                        <span className="text-[10px] font-bold text-fb-text-muted truncate max-w-[120px]">
+                          {tpl.layout?.authorName || 'Text Story'}
+                        </span>
+                      </div>
+                      {isSelected ? (
+                        <span className="material-symbols-outlined text-cyan-400 text-lg">check_circle</span>
+                      ) : (
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => ztteam_duplicateTemplate(tpl.id)}
+                            className="p-1 text-fb-text-muted hover:text-cyan-400 rounded-lg hover:bg-white/5"
+                            title="Nhân bản mẫu này"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">content_copy</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => ztteam_deleteTemplate(tpl)}
+                            className="p-1 text-fb-text-muted hover:text-rose-400 rounded-lg hover:bg-white/5"
+                            title="Xóa mẫu này"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">delete</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <h4 className="text-xs font-black text-fb-text truncate">{tpl.name}</h4>
+                    <p className="text-[10px] text-fb-text-muted mt-0.5 line-clamp-1">
+                      {tpl.layout?.authorSubtitle || 'A Text Story'}
+                    </p>
+                  </div>
+
+                  <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
+                    <span className="text-fb-text-muted font-medium flex items-center gap-1">
+                      {tpl.layout?.isCensoredName && (
+                        <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">Censor</span>
+                      )}
+                      {tpl.layout?.hasVerified && (
+                        <span className="material-symbols-outlined text-blue-400 text-[13px]">verified</span>
+                      )}
+                      {tpl.layout?.hasFollowBtn && (
+                        <span className="text-blue-400 font-bold">+Follow</span>
+                      )}
+                    </span>
+                    <span className="text-cyan-400 font-bold">Chọn ➔</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/** 3. Main Workspace: Live Phone Mockup (Left) + Customizer Panel (Right) */}
+      {/** 3. KHU VỰC THIẾT KẾ: LIVE PREVIEW (CỘT TRÁI) + BẢNG ĐIỀU KHIỂN (CỘT PHẢI) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/** CỘT TRÁI: LIVE 9:16 PHONE MOCKUP (45% Width) */}
         <div className="lg:col-span-5 flex flex-col items-center">
-          <div className="text-center mb-3">
-            <span className="text-xs font-bold text-fb-text-muted uppercase tracking-wider flex items-center justify-center gap-1.5">
-              <span className="material-symbols-outlined text-[16px] text-cyan-400">smartphone</span>
-              Xem Thử Trực Quan 9:16 (Live Preview)
-            </span>
+          {/** Tùy chọn xem trước với Fanpage thực tế */}
+          <div className="w-full max-w-[380px] mb-3 bg-fb-surface p-3 rounded-2xl border border-fb-surface-hover/60">
+            <label className="block text-[11px] font-bold text-fb-text uppercase mb-1.5 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-cyan-400 text-[15px]">visibility</span>
+              <span>Xem Thử Trực Quan Với Fanpage:</span>
+            </label>
+            <CustomDropdown
+              value={previewPageId}
+              onChange={(val) => setPreviewPageId(String(val))}
+              options={[
+                { value: '', label: `✨ Mặc định xem thử (${authorName})` },
+                ...pages.map((p) => ({
+                  value: p.id,
+                  label: `📄 ${p.name} (Tên & Avatar thật)`,
+                })),
+              ]}
+              className="w-full text-xs"
+            />
+            <p className="text-[10px] text-fb-text-muted mt-1 leading-tight">
+              💡 Khi render Reel thật, hệ thống sẽ tự động gán Tên & Avatar của chính Fanpage được áp dụng.
+            </p>
           </div>
 
           {/** Phone Device Bezel */}
@@ -432,8 +583,8 @@ export default function ReelTemplateLibrary() {
 
             {/** Màn Hình Reel 9:16 Content */}
             <div
-              className="w-full h-full rounded-[34px] overflow-hidden relative flex flex-col justify-between p-4.5 transition-all select-none"
-              style={{ background: currentPreset.bgGradient }}
+              className="w-full h-full rounded-[34px] overflow-hidden relative flex flex-col justify-between p-4 transition-all select-none"
+              style={{ background: bgGradient }}
             >
               {/** Quầng sáng mờ huyền ảo trong nền */}
               <div className="absolute top-10 right-0 w-44 h-44 bg-cyan-400/20 rounded-full blur-2xl pointer-events-none" />
@@ -443,43 +594,40 @@ export default function ReelTemplateLibrary() {
               <div
                 className="w-full my-auto rounded-2xl p-4 flex flex-col justify-between transition-all relative z-10"
                 style={{
-                  background: currentPreset.cardBg,
-                  border: currentPreset.cardBorder,
-                  boxShadow: currentPreset.cardShadow,
-                  backdropFilter: currentPreset.cardBackdropBlur,
-                  WebkitBackdropFilter: currentPreset.cardBackdropBlur,
+                  background: cardBg,
+                  border: cardBorder,
+                  boxShadow: cardShadow,
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
                 }}
               >
                 {/** Header của Card */}
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    {/** Avatar */}
+                    {/** Avatar Fanpage / Author */}
                     <div className="relative shrink-0">
                       <img
-                        src={avatarUrl}
+                        src={displayAvatar}
                         alt="Avatar"
                         className="w-10 h-10 rounded-full object-cover shadow-md"
-                        style={{ border: `2px solid ${currentPreset.avatarBorderColor}` }}
+                        style={{ border: `2px solid ${hookColor}` }}
                         onError={(e: any) => {
                           e.target.onerror = null;
                           e.target.src = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150';
                         }}
                       />
-                      {currentPreset.themeStyle === 'reading_corner' && (
-                        <div className="absolute -inset-0.5 rounded-full ring-2 ring-amber-400 ring-offset-1 ring-offset-black pointer-events-none" />
-                      )}
                     </div>
 
                     {/** Tên & Meta */}
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span
                           className={`text-xs font-black truncate leading-tight ${
-                            isCensoredName ? 'blur-[3px] select-none' : ''
+                            isCensoredName ? 'blur-[3.5px] select-none' : ''
                           }`}
-                          style={{ color: currentPreset.themeStyle === 'frosted_pastel' ? '#0f172a' : '#ffffff' }}
+                          style={{ color: '#ffffff' }}
                         >
-                          {authorName}
+                          {displayAuthorName}
                         </span>
 
                         {/** Tích xanh Verified */}
@@ -498,17 +646,8 @@ export default function ReelTemplateLibrary() {
                         )}
                       </div>
 
-                      <div
-                        className="text-[10px] font-medium flex items-center gap-1 mt-0.5 truncate"
-                        style={{ color: currentPreset.themeStyle === 'frosted_pastel' ? '#64748b' : '#94a3b8' }}
-                      >
+                      <div className="text-[10px] font-medium text-slate-400 flex items-center gap-1 mt-0.5 truncate">
                         <span>{authorSubtitle}</span>
-                        {authorSubmeta2 && (
-                          <>
-                            <span>•</span>
-                            <span className="font-bold">{authorSubmeta2}</span>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -521,7 +660,7 @@ export default function ReelTemplateLibrary() {
                     style={{
                       fontSize: `${fontSize}px`,
                       lineHeight: lineHeight,
-                      color: currentPreset.textColor,
+                      color: textColor,
                       fontFamily: "'Barlow Condensed', 'Montserrat', sans-serif",
                     }}
                   >
@@ -533,14 +672,14 @@ export default function ReelTemplateLibrary() {
                 <div className="pt-2 text-right">
                   <span
                     className="text-xs font-black tracking-wide inline-block"
-                    style={{ color: currentPreset.ctaColor }}
+                    style={{ color: ctaColor }}
                   >
                     {ctaText}
                   </span>
                 </div>
               </div>
 
-              {/** BANNER PILL ĐÁY (Ví dụ Mẫu 3: Full Story In Comment) */}
+              {/** BANNER PILL ĐÁY ("Full Story In Comment") */}
               {hasBottomPill && (
                 <div className="w-full mt-2 z-10 animate-pulse">
                   <div className="mx-auto w-fit px-4 py-1.5 rounded-full bg-black/85 border border-emerald-500/40 shadow-lg flex items-center gap-1.5 text-xs font-black text-emerald-400">
@@ -554,13 +693,28 @@ export default function ReelTemplateLibrary() {
 
         {/** CỘT PHẢI: BẢNG TÙY BIẾN THÔNG SỐ (55% Width) */}
         <div className="lg:col-span-7 bg-fb-surface rounded-2xl p-6 shadow-lg border border-fb-surface-hover/60 space-y-6">
+          {/** Tên mẫu giao diện */}
+          <div>
+            <label className="block text-xs font-bold text-fb-text uppercase mb-1.5">
+              Tên Mẫu Giao Diện (Text Story Template Name)
+            </label>
+            <input
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="VD: Text Story - Sapphire Emerald Dark..."
+              className="w-full bg-fb-surface-hover text-fb-text text-xs font-black p-2.5 rounded-xl border border-white/5 focus:outline-none focus:ring-1 focus:ring-fb-blue"
+            />
+          </div>
+
           {/** Tabs điều khiển */}
-          <div className="flex items-center gap-2 border-b border-fb-surface-hover/60 pb-3">
+          <div className="flex items-center gap-2 border-b border-fb-surface-hover/60 pb-3 flex-wrap">
             {[
+              { id: 'palette', label: 'Màu Sắc & Nền', icon: 'palette' },
               { id: 'branding', label: 'Thương Hiệu & Header', icon: 'badge' },
               { id: 'text', label: 'Nội Dung & Highlight', icon: 'format_color_text' },
               { id: 'footer', label: 'CTA & Nút Đáy', icon: 'call_to_action' },
-              { id: 'apply', label: 'Áp Dụng Fanpage', icon: 'send_to_mobile' },
+              { id: 'apply', label: 'Gán Cho Fanpage', icon: 'send_to_mobile' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -578,12 +732,149 @@ export default function ReelTemplateLibrary() {
             ))}
           </div>
 
-          {/** TAB 1: THƯƠNG HIỆU & HEADER */}
+          {/** TAB 1: MÀU SẮC & NỀN (PALETTE & BACKGROUND) */}
+          {activeTab === 'palette' && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              <div>
+                <label className="block text-xs font-bold text-cyan-400 uppercase tracking-wide mb-2">
+                  Bộ Màu Điện Ảnh Có Sẵn (1-Click Áp Dụng - Chuẩn Không Hồng / Tím)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {ZTTEAM_TEXT_STORY_PALETTES.map((preset) => (
+                    <div
+                      key={preset.id}
+                      onClick={() => ztteam_applyColorPreset(preset)}
+                      className="p-3 rounded-xl bg-fb-surface-hover/40 border border-white/5 hover:border-cyan-400/60 cursor-pointer transition-all hover:bg-fb-surface-hover flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="w-5 h-5 rounded-full border border-white/20 shrink-0 shadow-sm"
+                          style={{ background: preset.hlColor }}
+                        />
+                        <div>
+                          <h5 className="text-xs font-black text-fb-text">{preset.badge}</h5>
+                          <p className="text-[10px] text-fb-text-muted line-clamp-1">{preset.name}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-cyan-400">Chọn</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-fb-surface-hover/40 space-y-3.5">
+                <label className="block text-xs font-bold text-fb-text uppercase tracking-wide">
+                  Tùy Biến Chi Tiết Màu Sắc & Thẻ Kính (CSS Tokens)
+                </label>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-fb-text">Background Gradient Nền Reel:</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={bgGradient}
+                    onChange={(e) => setBgGradient(e.target.value)}
+                    className="w-full bg-fb-surface-hover text-cyan-300 text-xs font-mono p-2 rounded-xl border border-white/5 focus:outline-none focus:ring-1 focus:ring-fb-blue"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <span className="block text-xs font-bold text-fb-text mb-1">Nền Thẻ Card (cardBg):</span>
+                    <input
+                      type="text"
+                      value={cardBg}
+                      onChange={(e) => setCardBg(e.target.value)}
+                      className="w-full bg-fb-surface-hover text-slate-300 text-xs font-mono p-2 rounded-xl border border-white/5"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-fb-text mb-1">Viền Thẻ Card (cardBorder):</span>
+                    <input
+                      type="text"
+                      value={cardBorder}
+                      onChange={(e) => setCardBorder(e.target.value)}
+                      className="w-full bg-fb-surface-hover text-slate-300 text-xs font-mono p-2 rounded-xl border border-white/5"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <span className="block text-xs font-bold text-amber-400 mb-1">Màu Highlight (hlColor):</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={hlColor}
+                        onChange={(e) => setHlColor(e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                      />
+                      <input
+                        type="text"
+                        value={hlColor}
+                        onChange={(e) => setHlColor(e.target.value)}
+                        className="w-full bg-fb-surface-hover text-amber-300 text-xs font-mono p-1.5 rounded-lg border border-white/5"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="block text-xs font-bold text-amber-300 mb-1">Màu Hook Quote (hookColor):</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={hookColor}
+                        onChange={(e) => setHookColor(e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                      />
+                      <input
+                        type="text"
+                        value={hookColor}
+                        onChange={(e) => setHookColor(e.target.value)}
+                        className="w-full bg-fb-surface-hover text-amber-300 text-xs font-mono p-1.5 rounded-lg border border-white/5"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="block text-xs font-bold text-cyan-400 mb-1">Màu Nút CTA (ctaColor):</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={ctaColor}
+                        onChange={(e) => setCtaColor(e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                      />
+                      <input
+                        type="text"
+                        value={ctaColor}
+                        onChange={(e) => setCtaColor(e.target.value)}
+                        className="w-full bg-fb-surface-hover text-cyan-300 text-xs font-mono p-1.5 rounded-lg border border-white/5"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/** TAB 2: THƯƠNG HIỆU & HEADER */}
           {activeTab === 'branding' && (
             <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="bg-fb-surface-hover/30 p-3.5 rounded-xl border border-blue-500/20 text-xs text-blue-200">
+                <div className="flex items-center gap-1.5 font-bold text-cyan-400 mb-1">
+                  <span className="material-symbols-outlined text-[17px]">info</span>
+                  <span>Đồng Bộ Tên & Avatar Fanpage Tự Động</span>
+                </div>
+                <p className="text-[11px] text-fb-text-muted leading-relaxed">
+                  Khi tạo video Reel thực tế cho bất kỳ Fanpage nào, hệ thống sẽ tự động trích xuất Tên và Avatar của chính Fanpage đó vào Header này. Các thông số bên dưới dùng để cấu hình phong cách hiển thị và xem trước mẫu.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-fb-text uppercase mb-1.5">Tên Tác Giả / Kênh</label>
+                  <label className="block text-xs font-bold text-fb-text uppercase mb-1.5">Tên Xem Thử Mẫu</label>
                   <input
                     type="text"
                     value={authorName}
@@ -602,17 +893,6 @@ export default function ReelTemplateLibrary() {
                     className="w-full bg-fb-surface-hover text-fb-text text-xs font-medium p-2.5 rounded-xl border border-white/5 focus:outline-none focus:ring-1 focus:ring-fb-blue"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-fb-text uppercase mb-1.5">Link Avatar Hình Ảnh</label>
-                <input
-                  type="text"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full bg-fb-surface-hover text-fb-text text-xs font-medium p-2.5 rounded-xl border border-white/5 focus:outline-none focus:ring-1 focus:ring-fb-blue"
-                />
               </div>
 
               {/** Toggles */}
@@ -652,7 +932,7 @@ export default function ReelTemplateLibrary() {
                 <div className="flex items-center justify-between p-3 rounded-xl bg-fb-surface-hover/30 border border-white/5">
                   <span className="text-xs font-bold text-fb-text flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm text-amber-400">blur_on</span>
-                    Censor Tên
+                    Censor Tên Page
                   </span>
                   <button
                     type="button"
@@ -668,7 +948,7 @@ export default function ReelTemplateLibrary() {
             </div>
           )}
 
-          {/** TAB 2: NỘI DUNG & HIGHLIGHT */}
+          {/** TAB 3: NỘI DUNG & HIGHLIGHT */}
           {activeTab === 'text' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <div>
@@ -695,34 +975,6 @@ export default function ReelTemplateLibrary() {
                   placeholder="50% of my salary&#10;The day after discovering how much I earned..."
                   className="w-full bg-fb-surface-hover text-amber-300 text-xs font-mono p-3 rounded-xl border border-white/5 focus:outline-none focus:ring-1 focus:ring-fb-blue custom-scrollbar"
                 />
-              </div>
-
-              {/** Palette chọn màu Highlight */}
-              <div>
-                <label className="block text-xs font-bold text-fb-text uppercase mb-2">Màu Highlight Từ Khóa</label>
-                <div className="flex items-center gap-3">
-                  {[
-                    { name: 'Vàng Hổ Phách', color: '#fbbf24' },
-                    { name: 'Vàng Chanh', color: '#fde047' },
-                    { name: 'Xanh Cyan', color: '#38bdf8' },
-                    { name: 'Xanh Lục Bảo', color: '#10b981' },
-                    { name: 'Xanh Royal', color: '#2563eb' },
-                  ].map((p) => (
-                    <button
-                      key={p.color}
-                      type="button"
-                      onClick={() => setHlColor(p.color)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                        hlColor === p.color
-                          ? 'border-white bg-fb-surface-hover text-white'
-                          : 'border-transparent text-fb-text-muted hover:text-white'
-                      }`}
-                    >
-                      <span className="w-3 h-3 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: p.color }} />
-                      <span>{p.name}</span>
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/** Sliders Cỡ Chữ & Giãn Dòng */}
@@ -762,7 +1014,7 @@ export default function ReelTemplateLibrary() {
             </div>
           )}
 
-          {/** TAB 3: CTA & NÚT ĐÁY */}
+          {/** TAB 4: CTA & NÚT ĐÁY */}
           {activeTab === 'footer' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <div>
@@ -808,7 +1060,7 @@ export default function ReelTemplateLibrary() {
             </div>
           )}
 
-          {/** TAB 4: ÁP DỤNG CHO FANPAGE */}
+          {/** TAB 5: GÁN CHO FANPAGE */}
           {activeTab === 'apply' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <div>
@@ -828,7 +1080,7 @@ export default function ReelTemplateLibrary() {
                   className="w-full"
                 />
                 <p className="text-[11px] text-fb-text-muted mt-2 leading-relaxed">
-                  Khi gán, Fanpage sẽ tự động được chuyển chế độ render sang <strong>Text Story Reel 9:16</strong>, áp dụng bộ theme và phong cách bạn đang tùy chỉnh ở trên.
+                  Khi gán, Fanpage sẽ tự động được chuyển chế độ video sang <strong>Text Story Reel 9:16</strong>, và cố định sử dụng mẫu giao diện này cho các bài Reel.
                 </p>
               </div>
 
@@ -841,7 +1093,7 @@ export default function ReelTemplateLibrary() {
                 <span className={`material-symbols-outlined text-[18px] ${isApplying ? 'animate-spin' : ''}`}>
                   {isApplying ? 'sync' : 'verified'}
                 </span>
-                <span>{isApplying ? 'Đang áp dụng...' : '⚡ Xác Nhận Áp Dụng Cho Fanpage Này'}</span>
+                <span>{isApplying ? 'Đang áp dụng...' : '⚡ Xác Nhận Gán Mẫu Này Cho Fanpage'}</span>
               </button>
             </div>
           )}

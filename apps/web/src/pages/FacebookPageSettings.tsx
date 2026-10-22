@@ -39,6 +39,8 @@ export default function FacebookPageSettings() {
   /** Publishing & Schedule Config State */
   const [postFormat, setPostFormat] = useState('image');
   const [videoEngine, setVideoEngine] = useState('hook_image');
+  const [defaultReelTemplateId, setDefaultReelTemplateId] = useState<string>('random');
+  const [textStoryTemplates, setTextStoryTemplates] = useState<any[]>([]);
   const [defaultBgm, setDefaultBgm] = useState<string>('');
   const [bgmList, setBgmList] = useState<any[]>([]);
   const [currentPlayingBgm, setCurrentPlayingBgm] = useState<string | null>(null);
@@ -118,7 +120,21 @@ export default function FacebookPageSettings() {
       ztteam_fetchPagesFromDB();
     }
     ztteam_loadBgmList();
+    ztteam_loadTextStoryTemplates();
   }, [id]);
+
+  /** Tải danh sách mẫu Text Story Reel */
+  const ztteam_loadTextStoryTemplates = async () => {
+    try {
+      const res = await api.get('templates?format=video');
+      if (Array.isArray(res.data)) {
+        const stories = res.data.filter((t: any) => t.content_type === 'text_story');
+        setTextStoryTemplates(stories);
+      }
+    } catch (e) {
+      /** Bỏ qua nếu lỗi */
+    }
+  };
 
   /** Tải danh sách file nhạc BGM */
   const ztteam_loadBgmList = async () => {
@@ -247,6 +263,7 @@ export default function FacebookPageSettings() {
       setTags(data.tags || []);
       setPostFormat(data.post_format || 'image');
       setVideoEngine(data.video_engine || 'hook_image');
+      setDefaultReelTemplateId(data.default_reel_template_id || 'random');
       setDefaultBgm(data.default_bgm || '');
       setAutoPublishEnabled(data.auto_publish_enabled !== undefined ? data.auto_publish_enabled : true);
       setAddLinkToCaption(data.add_link_to_caption || false);
@@ -336,6 +353,7 @@ export default function FacebookPageSettings() {
         tags,
         post_format: postFormat,
         video_engine: videoEngine,
+        default_reel_template_id: defaultReelTemplateId === 'random' ? null : defaultReelTemplateId,
         default_bgm: defaultBgm || null,
         auto_publish_enabled: autoPublishEnabled,
         add_link_to_caption: false,
@@ -840,6 +858,42 @@ export default function FacebookPageSettings() {
                         : 'Đưa bài viết vào hàng đợi để Worker ngoài xử lý chuyển động bằng Muse Motion AI.'
                       }
                     </p>
+
+                    {videoEngine === 'text_story' && (
+                      <div className="mt-3 pt-3 border-t border-fb-surface-hover/50 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-emerald-400 uppercase tracking-wide flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[16px]">style</span>
+                            Mẫu Giao Diện Text Story (Reel Template)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/reel-templates')}
+                            className="text-[11px] font-bold text-fb-blue hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>Kho Giao Diện</span>
+                            <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                          </button>
+                        </div>
+                        <CustomDropdown
+                          value={defaultReelTemplateId}
+                          onChange={setDefaultReelTemplateId}
+                          options={[
+                            { value: 'random', label: '🎲 Tự động chọn ngẫu nhiên mẫu (Khuyên dùng - Đa dạng bài đăng)' },
+                            ...textStoryTemplates.map((t: any) => ({
+                              value: t.id,
+                              label: `📑 ${t.name}`
+                            }))
+                          ]}
+                        />
+                        <p className="text-[11px] text-fb-text-muted leading-relaxed">
+                          {defaultReelTemplateId === 'random'
+                            ? 'Mỗi bài viết video Text Story của Page này sẽ tự động được chọn ngẫu nhiên một mẫu giao diện từ Kho Mẫu (Text Story Reel), giúp bảng tin luôn mới lạ, đa dạng sắc thái.'
+                            : 'Cố định sử dụng mẫu giao diện này cho tất cả video Text Story của Fanpage.'
+                          }
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/** Nhạc nền Reel (BGM) */}

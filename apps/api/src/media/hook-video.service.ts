@@ -368,9 +368,58 @@ export class ZTTeamHookVideoService {
        * NHÁNH 1: ĐỊNH DẠNG TEXT STORY REEL (FROSTED GLASS CARD 9:16, ĐÁY CHỪA 10%)
        * ========================================================================= */
       if (engine === 'text_story') {
+        /** Tải danh sách các mẫu Text Story từ Database */
+        const dbTemplates = await this.prisma.ztteam_templates.findMany({
+          where: { format: 'video', content_type: 'text_story' },
+          orderBy: { created_at: 'asc' },
+        });
+
+        let chosenTemplate: any = null;
+        const assignedTemplateId = (imageRecord.page as any)?.default_reel_template_id;
+
+        if (assignedTemplateId && assignedTemplateId !== 'random') {
+          chosenTemplate = dbTemplates.find((t) => t.id === assignedTemplateId);
+        }
+
+        /** Nếu chế độ Random hoặc chưa chọn mẫu: Random tự động chọn 1 mẫu cho bài viết */
+        if (!chosenTemplate && dbTemplates.length > 0) {
+          const postSeed = String(imageRecord.wp_post_id || imageRecord.id || 'seed');
+          let hash = 0;
+          for (let i = 0; i < postSeed.length; i++) {
+            hash = (hash << 5) - hash + postSeed.charCodeAt(i);
+            hash |= 0;
+          }
+          const randIndex = Math.abs(hash) % dbTemplates.length;
+          chosenTemplate = dbTemplates[randIndex];
+        }
+
+        const layout = (chosenTemplate?.layout || {}) as any;
         const pageKey = imageRecord.page?.id || imageRecord.page?.name || imageRecord.page_id || 'ztteam_story';
-        const theme = ztteam_getTextStoryTheme(pageKey);
-        this.logger.log(`[Text Story Reel] Fanpage "${pageName}" sử dụng bộ theme: ${theme.name}`);
+        const fallbackTheme = ztteam_getTextStoryTheme(pageKey);
+
+        const theme = {
+          name: chosenTemplate?.name || fallbackTheme.name,
+          bgGradient: layout.bgGradient || fallbackTheme.bgGradient,
+          aura1: layout.aura1 || fallbackTheme.aura1,
+          aura2: layout.aura2 || fallbackTheme.aura2,
+          aura3: layout.aura3 || fallbackTheme.aura3,
+          cardBg: layout.cardBg || fallbackTheme.cardBg,
+          cardBorder: layout.cardBorder || fallbackTheme.cardBorder,
+          cardGlow: layout.cardShadow || fallbackTheme.cardGlow,
+          hookColor: layout.hookColor || fallbackTheme.hookColor,
+          hlColor: layout.hlColor || fallbackTheme.hlColor,
+          textColor: layout.textColor || fallbackTheme.textColor || '#ffffff',
+          ctaColor: layout.ctaColor || fallbackTheme.ctaColor,
+          verifiedColor: '#1877F2',
+          ctaText: layout.ctaText || 'Continue Reading...',
+          hasVerified: layout.hasVerified !== undefined ? Boolean(layout.hasVerified) : true,
+          hasFollowBtn: layout.hasFollowBtn !== undefined ? Boolean(layout.hasFollowBtn) : false,
+          isCensoredName: layout.isCensoredName !== undefined ? Boolean(layout.isCensoredName) : false,
+          hasBottomPill: layout.hasBottomPill !== undefined ? Boolean(layout.hasBottomPill) : false,
+          bottomPillText: layout.bottomPillText || 'Full Story In Comment 👇',
+        };
+
+        this.logger.log(`[Text Story Reel] Fanpage "${pageName}" (Post: ${imageRecord.wp_post_id}) sử dụng template: ${theme.name}`);
 
         const rawStory = imageRecord.ai_caption || imageRecord.wp_post_title || '';
         const storyData = await this.aiService.ztteam_generateTextStoryCardContent(
@@ -521,7 +570,7 @@ export class ZTTeamHookVideoService {
     .header-meta {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
     }
 
     .page-name-row {
@@ -530,7 +579,16 @@ export class ZTTeamHookVideoService {
       gap: 10px;
     }
 
-    /** TÊN FANPAGE ĐƯỢC LÀM MỜ BLUR ĐÚNG CHUẨN VIRAL CENSOR */
+    .page-name-text {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 27px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+      line-height: 1.15;
+    }
+
+    /** TÊN FANPAGE ĐƯỢC LÀM MỜ BLUR NẾU CENSOR BẬT */
     .page-name-blurred {
       font-family: 'Montserrat', sans-serif;
       font-size: 27px;
@@ -548,6 +606,19 @@ export class ZTTeamHookVideoService {
       flex-shrink: 0;
     }
 
+    .follow-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 12px;
+      background: #1877F2;
+      color: #ffffff;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(24, 119, 242, 0.4);
+    }
+
     .post-submeta {
       font-family: 'Montserrat', sans-serif;
       font-size: 18px;
@@ -562,7 +633,7 @@ export class ZTTeamHookVideoService {
       top: 155px;
       left: 60px;
       width: 960px;
-      height: 1575px;
+      height: ${theme.hasBottomPill ? '1540px' : '1575px'};
       z-index: 10;
     }
 
@@ -639,6 +710,30 @@ export class ZTTeamHookVideoService {
       text-shadow: 0 0 18px rgba(56, 189, 248, 0.7);
       letter-spacing: 0.3px;
     }
+
+    /** BANNER PILL ĐÁY NỔI BẬT */
+    .bottom-pill-wrapper {
+      position: absolute;
+      bottom: 48px;
+      left: 0;
+      width: 1080px;
+      display: flex;
+      justify-content: center;
+      z-index: 20;
+    }
+
+    .bottom-pill {
+      background: rgba(0, 0, 0, 0.88);
+      border: 1.8px solid rgba(34, 197, 94, 0.65);
+      color: #4ade80;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 25px;
+      font-weight: 800;
+      padding: 10px 32px;
+      border-radius: 9999px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(34, 197, 94, 0.35);
+      letter-spacing: 0.3px;
+    }
   </style>
 </head>
 <body>
@@ -648,7 +743,7 @@ export class ZTTeamHookVideoService {
   <div class="aura-3"></div>
   <div class="noise-grid"></div>
 
-  <!-- HEADER FANPAGE (VỚI TÊN FANPAGE ĐƯỢC LÀM MỜ BLUR NHƯ ẢNH MẪU VIRAL) -->
+  <!-- HEADER FANPAGE (LẤY TÊN VÀ AVATAR CỦA FANPAGE) -->
   <div class="external-header">
     <div class="avatar-wrapper">
       ${pageAvatarDataUri 
@@ -658,17 +753,19 @@ export class ZTTeamHookVideoService {
     </div>
     <div class="header-meta">
       <div class="page-name-row">
-        <span class="page-name-blurred">${pageName}</span>
+        <span class="${theme.isCensoredName ? 'page-name-blurred' : 'page-name-text'}">${pageName}</span>
+        ${theme.hasVerified ? `
         <svg class="verified-icon" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" fill="${theme.verifiedColor}"/>
           <path d="M7.5 12L10.5 15L16.5 9" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        </svg>` : ''}
+        ${theme.hasFollowBtn ? `<span class="follow-badge">+ Follow</span>` : ''}
       </div>
-      <span class="post-submeta">4 hours ago • A Text Story • facebook.com</span>
+      <span class="post-submeta">${layout.authorSubtitle || '4 hours ago • A Text Story • facebook.com'}</span>
     </div>
   </div>
 
-  <!-- THẺ BÀI VIẾT KÍNH MỜ FROSTED GLASS CAO 1575px - CHỈ TRỐNG ĐÚNG 10% Ở ĐÁY -->
+  <!-- THẺ BÀI VIẾT KÍNH MỜ FROSTED GLASS CAO 1575px -->
   <div class="glass-card-wrapper">
     <div class="glass-card">
       <div class="card-top-content">
@@ -678,10 +775,15 @@ export class ZTTeamHookVideoService {
         </div>
       </div>
       <div class="cta-row">
-        <div class="cta-text">Continue Reading...</div>
+        <div class="cta-text">${theme.ctaText}</div>
       </div>
     </div>
   </div>
+
+  ${theme.hasBottomPill ? `
+  <div class="bottom-pill-wrapper">
+    <div class="bottom-pill">${theme.bottomPillText}</div>
+  </div>` : ''}
 </body>
 </html>`;
 

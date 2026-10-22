@@ -94,16 +94,15 @@ export class ZTTeamTemplatesService implements OnModuleInit {
     }
   }
 
-  async ztteam_getTemplates(format?: string, pageId?: string) {
+  async ztteam_getTemplates(format?: string, pageId?: string, contentType?: string) {
     const where: any = {};
     if (format) where.format = format;
+    if (contentType) where.content_type = contentType;
     if (pageId) {
       where.OR = [
         { fb_page_id: null },
         { fb_page_id: pageId }
       ];
-    } else {
-      where.fb_page_id = null; /** System templates only by default */
     }
     return this.prisma.ztteam_templates.findMany({ where, orderBy: { created_at: 'asc' } });
   }

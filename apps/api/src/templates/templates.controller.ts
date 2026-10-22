@@ -20,8 +20,12 @@ export class ZTTeamTemplatesController {
   ) {}
 
   @Get()
-  ztteam_getTemplates(@Query('format') format?: string, @Query('pageId') pageId?: string) {
-    return this.templatesService.ztteam_getTemplates(format, pageId);
+  ztteam_getTemplates(
+    @Query('format') format?: string,
+    @Query('pageId') pageId?: string,
+    @Query('contentType') contentType?: string,
+  ) {
+    return this.templatesService.ztteam_getTemplates(format, pageId, contentType);
   }
 
   @Get(':id')
