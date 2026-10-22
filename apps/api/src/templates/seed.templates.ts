@@ -203,5 +203,76 @@ export const seedTemplates = () => {
 
 
 
+  templates.push({
+    name: 'Text Story - Midnight Dark (Derek West)',
+    format: 'video',
+    content_type: 'text_story',
+    voice_id: null,
+    video_y: 0,
+    video_radius: 0,
+    html_content: '',
+    layout: {
+      presetId: 'preset_midnight_derek',
+      themeStyle: 'midnight_dark',
+      authorName: 'Derek West',
+      authorSubtitle: '4hrs ago · A Text Story',
+      hasVerified: true,
+      hasFollowBtn: false,
+      isCensoredName: false,
+      hlColor: '#fbbf24',
+      ctaText: 'Continue Reading...',
+      hasBottomPill: false,
+    },
+    is_default: false
+  });
+
+  templates.push({
+    name: 'Text Story - Frosted Glass (Ruthie Bannsor)',
+    format: 'video',
+    content_type: 'text_story',
+    voice_id: null,
+    video_y: 0,
+    video_radius: 0,
+    html_content: '',
+    layout: {
+      presetId: 'preset_frosted_ruthie',
+      themeStyle: 'frosted_pastel',
+      authorName: 'Ruthie Bannsor',
+      authorSubtitle: '14 hours ago · 👥 Tales.com',
+      hasVerified: false,
+      hasFollowBtn: false,
+      isCensoredName: true,
+      hlColor: '#2563eb',
+      ctaText: '... Continue Reading',
+      hasBottomPill: false,
+    },
+    is_default: false
+  });
+
+  templates.push({
+    name: 'Text Story - Reading Corner Cinema (Mauro)',
+    format: 'video',
+    content_type: 'text_story',
+    voice_id: null,
+    video_y: 0,
+    video_radius: 0,
+    html_content: '',
+    layout: {
+      presetId: 'preset_reading_mauro',
+      themeStyle: 'reading_corner',
+      authorName: 'READING CORNER',
+      authorSubtitle: '2hrs ago • 🌐',
+      authorSubmeta2: 'Real Story 🔍',
+      hasVerified: false,
+      hasFollowBtn: true,
+      isCensoredName: false,
+      hlColor: '#fde047',
+      ctaText: 'Continue Reading...',
+      hasBottomPill: true,
+      bottomPillText: 'Full Story In Comment 👇',
+    },
+    is_default: false
+  });
+
   return templates;
 };

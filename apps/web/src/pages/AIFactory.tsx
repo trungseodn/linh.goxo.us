@@ -45,6 +45,8 @@ export default function AIFactory() {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(24);
   const [isPosting, setIsPosting] = useState<Record<string, boolean>>({});
+  const [isRetryingFailedVideos, setIsRetryingFailedVideos] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const { ztteam_showToast, ztteam_showConfirm } = useUIStore();
   const searchTimeoutRef = useRef<any>(null);
@@ -194,6 +196,29 @@ export default function AIFactory() {
       ztteam_loadItems(true);
     } catch (error: any) {
       ztteam_showToast(error.response?.data?.message || 'Lỗi đưa vào hàng đợi tạo Reel', 'error');
+    }
+  };
+
+  /** Đưa các video bị lỗi về lại hàng chờ tạo video */
+  const ztteam_retryFailedVideos = async (idsToRetry?: string[]) => {
+    const isAll = !idsToRetry || idsToRetry.length === 0;
+    const countText = isAll ? `tất cả ${counts.videoFailed || total || ''}` : `${idsToRetry.length}`;
+    const confirmed = await ztteam_showConfirm(
+      'Đưa video lỗi về hàng chờ',
+      `Bạn có chắc chắn muốn đưa ${countText} video bị lỗi về lại hàng chờ để hệ thống tạo lại không?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsRetryingFailedVideos(true);
+      const res = await api.post('image/retry-failed-videos', { ids: idsToRetry });
+      ztteam_showToast(res.data?.message || 'Đã đưa video lỗi về lại hàng chờ thành công!', 'success');
+      setSelectedIds([]);
+      ztteam_loadItems();
+    } catch (error: any) {
+      ztteam_showToast(error.response?.data?.message || 'Lỗi khi đưa video về hàng chờ', 'error');
+    } finally {
+      setIsRetryingFailedVideos(false);
     }
   };
 
@@ -456,6 +481,42 @@ export default function AIFactory() {
           </button>
         </div>
       </div>
+
+      {/** Banner Hành Động Riêng Cho Tab Lỗi Video Reel */}
+      {(filterStatus === 'VIDEO_FAILED' || filterVideoStatus === 'FAILED') && (
+        <div className="bg-gradient-to-r from-red-950/40 via-fb-surface to-amber-950/30 border border-red-500/30 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 border border-red-500/30 shadow-inner">
+              <span className="material-symbols-outlined text-2xl">videocam_off</span>
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
+                <span>Quản Lý Video Reel Lỗi Tạo</span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-red-500/20 text-red-300 border border-red-500/30">
+                  {counts.videoFailed || total || 0} video lỗi
+                </span>
+              </h3>
+              <p className="text-xs text-fb-text-muted mt-1 leading-relaxed">
+                Tự động gom lại các video bị gián đoạn, lỗi mạng hoặc timeout render để máy chủ hoặc Worker tiến hành tạo lại từ đầu.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 justify-end">
+            <button
+              type="button"
+              onClick={() => ztteam_retryFailedVideos()}
+              disabled={isRetryingFailedVideos || (counts.videoFailed === 0 && total === 0)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 via-fb-blue to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl text-xs font-black transition-all shadow-lg shadow-blue-500/25 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className={`material-symbols-outlined text-[18px] ${isRetryingFailedVideos ? 'animate-spin' : ''}`}>
+                {isRetryingFailedVideos ? 'sync' : 'replay_circle_filled'}
+              </span>
+              <span>⚡ Đưa Tất Cả Video Lỗi Về Hàng Chờ</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/** Lưới Bài Viết */}
       <div className="bg-fb-surface rounded-2xl p-6 shadow-lg min-h-[420px] flex flex-col justify-between">

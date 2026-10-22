@@ -89,6 +89,64 @@ export class ZTTeamImageController {
     return { success: true, url };
   }
 
+  /**
+   * ZTTeam: Đưa các video bị lỗi về lại hàng chờ (hỗ trợ chọn lẻ hoặc đưa tất cả bài lỗi)
+   * POST /api/image/retry-failed-videos
+   */
+  @Post('retry-failed-videos')
+  @UseGuards(ZTTeamAuthGuard)
+  async ztteam_retryFailedVideos(@Body() body: { ids?: string[] }) {
+    const where: any = {
+      video_status: 'FAILED',
+      is_posted: false,
+      status: { not: 'POSTED' },
+    };
+
+    if (body?.ids && Array.isArray(body.ids) && body.ids.length > 0) {
+      where.id = { in: body.ids };
+    }
+
+    const failedPosts = await this.prisma.ztteam_images.findMany({
+      where,
+      include: { page: true },
+    });
+
+    if (failedPosts.length === 0) {
+      return {
+        success: true,
+        count: 0,
+        message: 'Không có video lỗi nào cần đưa về hàng chờ.',
+      };
+    }
+
+    let queuedCount = 0;
+    for (const post of failedPosts) {
+      try {
+        const engine = (post.page as any)?.video_engine || 'hook_image';
+        const updated = await this.prisma.ztteam_images.update({
+          where: { id: post.id },
+          data: { video_status: 'PENDING', error_log: null },
+        });
+        this.eventEmitter.emit('image.updated', updated);
+
+        if (engine === 'hook_image' || engine === 'text_story') {
+          this.hookVideoService.ztteam_renderHookVideo(post.id).catch(err => {
+            this.logger.error(`[Batch Retry Hook/Text Story Error] ${post.id}: ${err.message}`);
+          });
+        }
+        queuedCount++;
+      } catch (err: any) {
+        this.logger.error(`[Retry Failed Video Error] ${post.id}: ${err.message}`);
+      }
+    }
+
+    return {
+      success: true,
+      count: queuedCount,
+      message: `Đã đưa ${queuedCount} video lỗi về lại hàng chờ tạo video thành công.`,
+    };
+  }
+
   @Get('list')
   @UseGuards(ZTTeamAuthGuard)
   async ztteam_listImages(

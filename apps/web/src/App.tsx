@@ -16,6 +16,7 @@ import FanpageReport from './pages/FanpageReport'
 import UserManagement from './pages/UserManagement'
 import StoryTestStudio from './pages/StoryTestStudio'
 import MetaBMGuidePage from './pages/MetaBMGuidePage'
+import ReelTemplateLibrary from './pages/ReelTemplateLibrary'
 
 import { useZTTeamAuthStore } from './stores/authStore'
 import './index.css'
@@ -53,6 +54,7 @@ function App() {
           <Route path="ai-factory" element={<AIFactory />} />
           <Route path="reel-factory" element={<AIFactory />} />
           <Route path="image-factory" element={<AIFactory />} />
+          <Route path="reel-templates" element={<ReelTemplateLibrary />} />
           <Route path="story-test" element={<StoryTestStudio />} />
           <Route path="statistics" element={<StatisticsPage />} />
           <Route path="google-analytics" element={<GoogleAnalyticsPage />} />

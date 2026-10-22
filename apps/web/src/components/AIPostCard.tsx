@@ -383,13 +383,18 @@ export default function ZTTeamAIPostCard({
                 ĐANG TẠO REEL
               </div>
             ) : item.video_status === 'FAILED' ? (
-              <div 
-                className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-[10px] font-bold text-red-300 backdrop-blur-md shadow-md cursor-help"
-                title={`Tạo video thất bại: ${item.error_log || 'Lỗi không xác định'}`}
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onQueueVideo) onQueueVideo(item);
+                }}
+                className="pointer-events-auto flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/25 hover:bg-red-500/40 border border-red-500/50 text-[10px] font-bold text-red-200 backdrop-blur-md shadow-md cursor-pointer transition-all hover:scale-105"
+                title={`Tạo video thất bại: ${item.error_log || 'Lỗi không xác định'}. Bấm để đưa về hàng chờ tạo lại!`}
               >
-                <span className="material-symbols-outlined text-xs text-red-400">error</span>
-                LỖI TẠO REEL
-              </div>
+                <span className="material-symbols-outlined text-xs text-amber-300">replay</span>
+                <span>LỖI REEL • THỬ LẠI</span>
+              </button>
             ) : null}
           </div>
 
@@ -631,6 +636,19 @@ export default function ZTTeamAIPostCard({
       {/** 7. Actions Footer Bar */}
       <div className="mt-auto px-4 py-3 bg-fb-bg/60 border-t border-fb-surface-hover/60 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-1">
+          {/** Nút đưa video lỗi về hàng chờ Reel */}
+          {item.video_status === 'FAILED' && onQueueVideo && !isAlreadyPosted && (
+            <button
+              type="button"
+              onClick={() => onQueueVideo(item)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-amber-600/20 cursor-pointer shrink-0"
+              title={`Lỗi render: ${item.error_log || 'Thất bại'}. Bấm để đưa về hàng chờ tạo lại!`}
+            >
+              <span className="material-symbols-outlined text-[15px]">replay</span>
+              <span>Tạo Lại Reel</span>
+            </button>
+          )}
+
           {/** Button Đăng Ngay: CHỈ HIỂN THỊ KHI CHƯA ĐĂNG VÀ CÓ PAGE */}
           {canPostNow && onPostNow && !isStandaloneManual && (
             <button
@@ -741,7 +759,7 @@ export default function ZTTeamAIPostCard({
             </button>
           )}
 
-          {!isAlreadyPosted && isCompleted && !item.video_url && item.video_status !== 'PENDING' && onQueueVideo && (
+          {!isAlreadyPosted && (isCompleted || item.video_status === 'FAILED') && !item.video_url && item.video_status !== 'PENDING' && onQueueVideo && (
             <button
               type="button"
               onClick={() => onQueueVideo(item)}

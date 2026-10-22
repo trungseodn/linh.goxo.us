@@ -73,6 +73,7 @@ export default function Layout() {
         { to: '/meta-bm-guide', icon: 'menu_book', label: 'HD Tạo Token BM' },
         { to: '/crawl-sources', icon: 'language', label: 'Website' },
         { to: '/ai-factory', icon: 'auto_awesome', label: 'AI Factory' },
+        { to: '/reel-templates', icon: 'style', label: 'Kho Giao Diện Reel' },
         { to: '/story-test', icon: 'auto_stories', label: 'Story Studio (Test)' },
         { to: '/statistics', icon: 'bar_chart', label: 'Thống Kê' },
         { to: '/google-analytics', icon: 'insights', label: 'Google Analytics' },
