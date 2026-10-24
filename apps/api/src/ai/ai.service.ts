@@ -923,7 +923,7 @@ CRITICAL REQUIREMENTS:
   }
 
   /**
-   * ZTTeam: Sáng tạo prompt chuẩn cho Avatar (1:1) và Cover (16:9) bám sát chủ đề Story và chèn tên Page vào cả 2 ảnh
+   * ZTTeam: Sáng tạo prompt chuẩn cho Avatar (1:1) và Cover (16:9) bám sát Hạng mục (Category) và tên Page
    */
   async ztteam_generateBrandingPrompts(params: {
     pageName: string;
@@ -932,17 +932,18 @@ CRITICAL REQUIREMENTS:
     tags?: string[];
     recentTitles?: string[];
   }): Promise<{ avatarPrompt: string; coverPrompt: string }> {
-    const { pageName } = params;
+    const { pageName, category } = params;
 
-    /**
-     * ZTTeam: Cấu trúc câu lệnh chuẩn bám sát yêu cầu:
-     * - Page làm chuyên đề Story
-     * - Lấy tên Fanpage "${pageName}"
-     * - Chèn tên Page vào cả 2 ảnh theo phong cách typography nghệ thuật / tiêu đề thương hiệu
-     */
-    const avatarPrompt = `This Facebook page is dedicated to story content. Based on the page name "${pageName}", create a compelling 1:1 square avatar profile picture that represents the storytelling theme. Clearly and beautifully integrate the exact brand name text "${pageName}" in stylish, modern typography into the artwork, dramatic cinematic lighting, rich emotional atmosphere, 8k resolution, photorealistic.`;
+    const categoryContext = category && category.trim().length > 0
+      ? ` The page category is "${category}". The visual design, symbolism, color palette and aesthetic must strongly represent this "${category}" category.`
+      : '';
+    const topicsContext = params.recentTitles && params.recentTitles.length > 0
+      ? ` Context themes: ${params.recentTitles.slice(0, 3).join(', ')}.`
+      : '';
 
-    const coverPrompt = `This Facebook page is dedicated to story content. Based on the page name "${pageName}", create a breathtaking cinematic 16:9 cover banner that captures the mood and atmosphere of this storytelling page. Prominently display the exact page title text "${pageName}" in bold, elegant cinematic typography across the banner, immersive atmospheric depth, rich storytelling lighting, 8k resolution.`;
+    const avatarPrompt = `Facebook page brand identity for "${pageName}".${categoryContext}${topicsContext} Create a premium, iconic 1:1 square profile avatar branding image. Clearly incorporate the exact brand name "${pageName}" in clean, modern typography. Professional aesthetic, sharp details, vibrant colors, iconic composition, 8k resolution.`;
+
+    const coverPrompt = `Facebook page banner for "${pageName}".${categoryContext}${topicsContext} Create a breathtaking cinematic 16:9 wide panoramic cover banner photo. Prominently display the exact brand name "${pageName}" in bold, stylish cinematic typography. Rich atmospheric depth, premium social media visual branding, 8k resolution.`;
 
     return {
       avatarPrompt,

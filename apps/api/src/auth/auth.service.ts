@@ -11,6 +11,10 @@ export class ZTTeamAuthService {
   ) {}
 
   async ztteam_login(email: string, pass: string) {
+    if (!email || !pass) {
+      throw new UnauthorizedException('Email và mật khẩu không được để trống');
+    }
+
     const user = await this.usersService.ztteam_findByEmail(email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');

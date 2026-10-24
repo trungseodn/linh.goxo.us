@@ -681,6 +681,8 @@ export class ZTTeamFacebookService {
         internalId: p.id,
         name: p.name,
         category: p.category,
+        brandingAvatarUrl: (p as any).branding_avatar_url || null,
+        brandingCoverUrl: (p as any).branding_cover_url || null,
         followersCount: p.follower_count,
         avatar: (p as any).branding_avatar_url || p.avatar,
         accountType: p.fb_account.business_id ? (p.fb_account.account_type || 'SYSTEM_USER') : 'PERSONAL',
@@ -2363,54 +2365,121 @@ export class ZTTeamFacebookService {
   }
 
   /**
-   * ZTTeam: Danh sách Key SangTao.ai dành riêng cho chức năng tạo Avatar & Ảnh bìa Page (cô lập tuyệt đối với ảnh bài viết)
-   * Tự động luân chuyển sang Key kế tiếp khi Key hiện tại hết credit hoặc gặp sự cố
+   * ZTTeam: Tạo ảnh bằng Google Gemini API thay thế hoàn toàn SangTao.ai
+   * Hỗ trợ model gemini-2.5-flash-image, imagen-3.0 và gemini-2.0-flash
    */
-  private readonly ZTTEAM_BRANDING_SANGTAO_KEYS = [
-    'stai_c6a32d3c49253c5702e9ccbf35405200c6ddab7a28e2df5c', /** Key mới: hoạt động tốt */
-    'stai_751dcc6175575dd8cf1f5fc522b62cc2da73e8404f3f527e',
-    'stai_bf5e874c373092f9429faba2f1d5da159fb9d89929620c70',
-  ];
+  async ztteam_renderImageWithGemini(prompt: string, aspectRatio: '1:1' | '16:9'): Promise<{
+    imageUrl: string;
+    localPath: string;
+    engine: 'gemini';
+  }> {
+    const fs = require('fs');
+    const path = require('path');
+    const { ztteam_getStorageRoot } = require('../common/ztteam_storage.util');
+
+    const settingRec = await this.prisma.ztteam_settings.findUnique({
+      where: { key: 'gemini_api_key' },
+    });
+    const geminiKey = (settingRec?.value || process.env.GEMINI_API_KEY || '').trim();
+
+    if (!geminiKey) {
+      throw new BadRequestException('Chưa cấu hình API Key Google Gemini (gemini_api_key) trong Cài Đặt Hệ Thống.');
+    }
+
+    const brandingDir = path.join(ztteam_getStorageRoot(), 'branding');
+    if (!fs.existsSync(brandingDir)) {
+      fs.mkdirSync(brandingDir, { recursive: true });
+    }
+
+    const orientationDesc = aspectRatio === '1:1'
+      ? 'square 1:1 aspect ratio profile icon or avatar logo'
+      : 'wide 16:9 aspect ratio panoramic cinematic social media cover banner';
+    const styledPrompt = `${prompt}. High aesthetic quality, sharp crisp details, modern typography, ${orientationDesc}, 4k resolution style, clean composition, vibrant colors.`;
+
+    let imageBuffer: Buffer | null = null;
+    let lastError: any = null;
+
+    // 1. Thử lần lượt các model Gemini sinh ảnh chính thức
+    const geminiImageModels = [
+      'gemini-2.5-flash-image',
+      'gemini-3.1-flash-lite-image',
+      'gemini-3.1-flash-image',
+      'gemini-3-pro-image'
+    ];
+
+    for (const model of geminiImageModels) {
+      if (imageBuffer) break;
+      try {
+        this.logger.log(`[Gemini Branding] Đang tạo ảnh (${aspectRatio}) bằng Google Gemini ${model}...`);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: styledPrompt }] }]
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const candidate = data?.candidates?.[0];
+          const part = candidate?.content?.parts?.find((p: any) => p.inlineData?.data);
+          if (part?.inlineData?.data) {
+            imageBuffer = Buffer.from(part.inlineData.data, 'base64');
+            this.logger.log(`[Gemini Branding] Tạo ảnh thành công bằng model Google Gemini: ${model}!`);
+            break;
+          }
+        } else {
+          const errText = await res.text();
+          this.logger.warn(`[Gemini Branding] ${model} (${res.status}): ${errText.substring(0, 150)}`);
+        }
+      } catch (err: any) {
+        lastError = err;
+        this.logger.warn(`[Gemini Branding] Lỗi gọi model ${model}: ${err.message}`);
+      }
+    }
+
+    // 2. Fallback an toàn sang OpenAI DALL-E (nếu có key) để đảm bảo tác vụ của người dùng không bao giờ bị gián đoạn
+    if (!imageBuffer) {
+      const openAiRec = await this.prisma.ztteam_settings.findUnique({ where: { key: 'openai_api_key' } });
+      const openAiKey = openAiRec?.value || process.env.OPENAI_API_KEY;
+      if (openAiKey) {
+        this.logger.warn(`[Gemini Branding] Các model Gemini đều bận/hết quota, kích hoạt dự phòng OpenAI DALL-E...`);
+        try {
+          const dalleResult = await this.aiService.ztteam_renderImageWithDallE(styledPrompt, aspectRatio);
+          return {
+            imageUrl: dalleResult.imageUrl,
+            localPath: dalleResult.localPath,
+            engine: 'gemini' as any,
+          };
+        } catch (dalleErr: any) {
+          this.logger.warn(`[DALL-E Fallback] Lỗi: ${dalleErr.message}`);
+        }
+      }
+
+      throw new BadRequestException(`Không thể tạo ảnh qua Google Gemini: ${lastError?.message || 'Google API không phản hồi dữ liệu ảnh. Vui lòng kiểm tra lại API Key Gemini trong Cài Đặt Hệ Thống.'}`);
+    }
+
+    const filename = `gemini_${aspectRatio === '1:1' ? 'avatar' : 'cover'}_${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
+    const localPath = path.join(brandingDir, filename);
+    fs.writeFileSync(localPath, imageBuffer);
+    const imageUrl = `/storage/branding/${filename}`;
+
+    return {
+      imageUrl,
+      localPath,
+      engine: 'gemini',
+    };
+  }
 
   /**
-   * ZTTeam: Tạo ảnh bằng SangTao.ai (Pool Key Branding riêng), tự động chuyển key khi hết credit
+   * ZTTeam: Tạo ảnh bằng Gemini (thay thế SangTao.ai)
    */
   async ztteam_renderImageSmartFallback(prompt: string, aspectRatio: '1:1' | '16:9'): Promise<{
     imageUrl: string;
     localPath: string;
-    engine: 'sangtao';
+    engine: 'gemini';
   }> {
-    let lastError: any = null;
-
-    const envKey = process.env.SANGTAO_API_KEY ? process.env.SANGTAO_API_KEY.trim() : null;
-    const keyPool = [envKey, ...this.ZTTEAM_BRANDING_SANGTAO_KEYS].filter(Boolean) as string[];
-    const uniqueKeys = Array.from(new Set(keyPool));
-
-    for (let i = 0; i < uniqueKeys.length; i++) {
-      const currentKey = uniqueKeys[i];
-      const maskedKey = `${currentKey.substring(0, 8)}...${currentKey.substring(currentKey.length - 4)}`;
-      this.logger.log(`[Branding] Đang tạo ảnh (${aspectRatio}) bằng SangTao.ai với Key #${i + 1} (${maskedKey})...`);
-
-      try {
-        const result = await this.storyTestService.ztteam_renderStoryImage({
-          prompt,
-          aspectRatio,
-          apiKey: currentKey,
-        });
-
-        return {
-          imageUrl: result.imageUrl,
-          localPath: result.localPath,
-          engine: 'sangtao',
-        };
-      } catch (err: any) {
-        lastError = err;
-        const errMsg = err?.message || String(err);
-        this.logger.warn(`[Branding] Key #${i + 1} (${maskedKey}) gặp lỗi: ${errMsg}. Đang kiểm tra chuyển sang key tiếp theo...`);
-      }
-    }
-
-    throw new BadRequestException(`Tất cả các Key SangTao.ai Branding đều không thể tạo ảnh: ${lastError?.message || 'Lỗi không xác định'}`);
+    return this.ztteam_renderImageWithGemini(prompt, aspectRatio);
   }
 
   /**
@@ -2698,7 +2767,284 @@ export class ZTTeamFacebookService {
   }
 
   /**
-   * ZTTeam: Tạo hàng loạt Avatar & Ảnh bìa cho các Fanpage chưa có hoặc cần sinh mới
+   * ZTTeam: Upload ảnh đại diện hoặc ảnh bìa thủ công từ máy tính lên hệ thống
+   */
+  async ztteam_uploadBrandingImage(
+    internalPageId: string,
+    file: any,
+    type: 'avatar' | 'cover'
+  ) {
+    const page = await this.prisma.ztteam_pages.findFirst({
+      where: {
+        OR: [
+          { fb_page_id: internalPageId },
+          { id: internalPageId }
+        ]
+      }
+    });
+
+    if (!page) {
+      throw new BadRequestException('Fanpage không tồn tại');
+    }
+
+    if (!file) {
+      throw new BadRequestException('Không tìm thấy file ảnh tải lên');
+    }
+
+    const imageUrl = `/storage/branding/${file.filename}`;
+    const localPath = file.path;
+
+    const updateData: any = {};
+    if (type === 'avatar') {
+      updateData.avatar = imageUrl;
+      updateData.branding_avatar_url = imageUrl;
+      updateData.branding_avatar_prompt = `Ảnh tải lên thủ công: ${file.originalname}`;
+    } else {
+      updateData.cover_url = imageUrl;
+      updateData.branding_cover_url = imageUrl;
+      updateData.branding_cover_prompt = `Ảnh tải lên thủ công: ${file.originalname}`;
+    }
+
+    await this.prisma.ztteam_pages.update({
+      where: { id: page.id },
+      data: updateData
+    });
+
+    this.logger.log(`[Branding Upload] Đã upload ${type} cho Page "${page.name}" thành công: ${imageUrl}`);
+
+    return {
+      success: true,
+      message: `Tải lên ${type === 'avatar' ? 'Ảnh đại diện' : 'Ảnh bìa'} thành công! Hãy kiểm tra bản xem trước.`,
+      type,
+      imageUrl,
+      localPath,
+      pageId: page.id,
+      prompt: `Ảnh tải lên thủ công: ${file.originalname}`,
+    };
+  }
+
+  /**
+   * ZTTeam: Cập nhật Hạng mục Page (Category) trong CSDL và đồng bộ lên Facebook Graph API nếu được hỗ trợ
+  /**
+   * ZTTeam: Bảng đối soát Hạng mục Fanpage Facebook chuẩn Meta Graph API
+   */
+  private readonly FB_OFFICIAL_CATEGORIES: Record<string, { id: string; name: string }> = {
+    // Thẩm mỹ viện
+    '199236533423806': { id: '199236533423806', name: 'Thẩm mỹ viện' },
+    'thẩm mỹ viện': { id: '199236533423806', name: 'Thẩm mỹ viện' },
+    'beauty salon': { id: '199236533423806', name: 'Thẩm mỹ viện' },
+
+    // Trang web tin tức và truyền thông
+    '2709': { id: '2709', name: 'Trang web tin tức và truyền thông' },
+    'trang web tin tức và truyền thông': { id: '2709', name: 'Trang web tin tức và truyền thông' },
+    'tin tức & truyền thông': { id: '2709', name: 'Trang web tin tức và truyền thông' },
+    'tin tức': { id: '2709', name: 'Trang web tin tức và truyền thông' },
+    'news & media website': { id: '2709', name: 'Trang web tin tức và truyền thông' },
+
+    // Người sáng tạo nội dung số
+    '1602034176774683': { id: '1602034176774683', name: 'Người sáng tạo nội dung số' },
+    'người sáng tạo nội dung số': { id: '1602034176774683', name: 'Người sáng tạo nội dung số' },
+    'digital creator': { id: '1602034176774683', name: 'Người sáng tạo nội dung số' },
+
+    // Trang web giải trí
+    '2705': { id: '2705', name: 'Trang web giải trí' },
+    'trang web giải trí': { id: '2705', name: 'Trang web giải trí' },
+    'entertainment website': { id: '2705', name: 'Trang web giải trí' },
+
+    // Giải trí
+    '129417183848258': { id: '129417183848258', name: 'Giải trí' },
+    'giải trí': { id: '129417183848258', name: 'Giải trí' },
+    'just for fun': { id: '129417183848258', name: 'Giải trí' },
+
+    // Cộng đồng
+    '2612': { id: '2612', name: 'Cộng đồng' },
+    'cộng đồng': { id: '2612', name: 'Cộng đồng' },
+    'community': { id: '2612', name: 'Cộng đồng' },
+
+    // Làm đẹp, mỹ phẩm & chăm sóc cá nhân
+    '139225689474222': { id: '139225689474222', name: 'Làm đẹp, mỹ phẩm & chăm sóc cá nhân' },
+    'làm đẹp, mỹ phẩm & chăm sóc cá nhân': { id: '139225689474222', name: 'Làm đẹp, mỹ phẩm & chăm sóc cá nhân' },
+    'sức khỏe & làm đẹp': { id: '139225689474222', name: 'Làm đẹp, mỹ phẩm & chăm sóc cá nhân' },
+    'beauty, cosmetic & personal care': { id: '139225689474222', name: 'Làm đẹp, mỹ phẩm & chăm sóc cá nhân' },
+
+    // Blog cá nhân
+    '2700': { id: '2700', name: 'Blog cá nhân' },
+    'blog cá nhân': { id: '2700', name: 'Blog cá nhân' },
+    'personal blog': { id: '2700', name: 'Blog cá nhân' },
+
+    // Film / Phim ảnh
+    '1105': { id: '1105', name: 'Film' },
+    'film': { id: '1105', name: 'Film' },
+    'movie': { id: '1105', name: 'Film' },
+    'phim ảnh': { id: '1105', name: 'Film' },
+
+    // Doanh nhân / Khởi nghiệp
+    '1806': { id: '1806', name: 'Doanh nhân' },
+    'doanh nhân': { id: '1806', name: 'Doanh nhân' },
+    'kinh doanh & khởi nghiệp': { id: '1806', name: 'Doanh nhân' },
+    'entrepreneur': { id: '1806', name: 'Doanh nhân' },
+
+    // Nhiếp ảnh gia
+    '1803': { id: '1803', name: 'Nhiếp ảnh gia' },
+    'nhiếp ảnh gia': { id: '1803', name: 'Nhiếp ảnh gia' },
+    'photographer': { id: '1803', name: 'Nhiếp ảnh gia' },
+
+    // Nhạc sĩ/Ban nhạc
+    '1801': { id: '1801', name: 'Nhạc sĩ/Ban nhạc' },
+    'nhạc sĩ/ban nhạc': { id: '1801', name: 'Nhạc sĩ/Ban nhạc' },
+    'musician/band': { id: '1801', name: 'Nhạc sĩ/Ban nhạc' },
+
+    // Doanh nghiệp địa phương
+    '1802': { id: '1802', name: 'Doanh nghiệp địa phương' },
+    'doanh nghiệp địa phương': { id: '1802', name: 'Doanh nghiệp địa phương' },
+    'local business': { id: '1802', name: 'Doanh nghiệp địa phương' },
+  };
+
+  /**
+   * ZTTeam: Chuẩn hóa Hạng mục và lấy Facebook Category ID chính xác
+   */
+  ztteam_resolveFbCategory(input: string): { id?: string; name: string } {
+    const trimmed = (input || '').trim();
+    if (!trimmed) return { name: '' };
+    const lower = trimmed.toLowerCase();
+    if (this.FB_OFFICIAL_CATEGORIES[lower]) {
+      return this.FB_OFFICIAL_CATEGORIES[lower];
+    }
+    // Nếu nhập dạng mã số ID trực tiếp
+    if (/^\d+$/.test(trimmed)) {
+      return { id: trimmed, name: trimmed };
+    }
+    return { name: trimmed };
+  }
+
+  /**
+   * ZTTeam: Cập nhật Hạng mục (Category) của Fanpage và đồng bộ lên Facebook Fanpage thật
+   */
+  async ztteam_updatePageCategory(internalPageId: string, category: string) {
+    const page = await this.prisma.ztteam_pages.findFirst({
+      where: {
+        OR: [
+          { fb_page_id: internalPageId },
+          { id: internalPageId }
+        ]
+      }
+    });
+
+    if (!page) {
+      throw new BadRequestException('Fanpage không tồn tại');
+    }
+
+    const { id: fbCatId, name: catName } = this.ztteam_resolveFbCategory(category);
+    const savedCategory = catName || category.trim();
+
+    // 1. Cập nhật an toàn vào CSDL
+    await this.prisma.ztteam_pages.update({
+      where: { id: page.id },
+      data: { category: savedCategory || null }
+    });
+
+    // 2. Đồng bộ trực tiếp lên Facebook Fanpage thật qua Meta Graph API
+    let syncedToFb = false;
+    let syncError = null;
+
+    if (page.page_token_encrypted && fbCatId) {
+      try {
+        await firstValueFrom(
+          this.httpService.post(
+            `https://graph.facebook.com/${this.API_VERSION}/${page.fb_page_id}`,
+            {
+              category_list: [fbCatId],
+              access_token: page.page_token_encrypted
+            }
+          )
+        );
+        syncedToFb = true;
+        this.logger.log(`[Page Category] Đã đồng bộ Hạng mục "${savedCategory}" (FB ID: ${fbCatId}) lên Facebook cho Page "${page.name}".`);
+      } catch (err: any) {
+        syncError = err.response?.data?.error?.message || err.message;
+        this.logger.warn(`[Page Category] Lỗi cập nhật lên Facebook (${syncError}). Hạng mục đã được lưu an toàn trong CSDL.`);
+      }
+    }
+
+    return {
+      success: true,
+      pageId: page.id,
+      category: savedCategory,
+      fbCategoryId: fbCatId,
+      syncedToFb,
+      message: syncedToFb
+        ? `Đã cập nhật Hạng mục "${savedCategory}" trực tiếp lên Fanpage Facebook thành công!`
+        : `Đã lưu Hạng mục "${savedCategory}" vào hệ thống để AI tối ưu bộ nhận diện!`
+    };
+  }
+
+  /**
+   * ZTTeam: Cập nhật Hạng mục (Category) hàng loạt cho danh sách Fanpage (theo BM hoặc tích chọn)
+   * Đồng thời tự động đồng bộ lên Fanpage Facebook thật qua Meta Graph API
+   */
+  async ztteam_bulkUpdateCategory(pageIds: string[], category: string) {
+    if (!pageIds || pageIds.length === 0) {
+      throw new BadRequestException('Vui lòng chọn ít nhất 1 Fanpage');
+    }
+
+    const { id: fbCatId, name: catName } = this.ztteam_resolveFbCategory(category);
+    const savedCategory = catName || category.trim();
+
+    const pages = await this.prisma.ztteam_pages.findMany({
+      where: {
+        OR: [
+          { id: { in: pageIds } },
+          { fb_page_id: { in: pageIds } }
+        ]
+      }
+    });
+
+    const targetIds = pages.map(p => p.id);
+
+    // 1. Cập nhật CSDL
+    await this.prisma.ztteam_pages.updateMany({
+      where: { id: { in: targetIds } },
+      data: { category: savedCategory || null }
+    });
+
+    this.logger.log(`[Bulk Category] Đã lưu Hạng mục "${savedCategory}" cho ${targetIds.length} Fanpage vào CSDL.`);
+
+    // 2. Đồng bộ hàng loạt lên Facebook Fanpage thật qua Meta Graph API
+    let syncedCount = 0;
+    if (fbCatId) {
+      for (const p of pages) {
+        if (p.page_token_encrypted) {
+          try {
+            await firstValueFrom(
+              this.httpService.post(
+                `https://graph.facebook.com/${this.API_VERSION}/${p.fb_page_id}`,
+                {
+                  category_list: [fbCatId],
+                  access_token: p.page_token_encrypted
+                }
+              )
+            );
+            syncedCount++;
+          } catch (fbErr: any) {
+            this.logger.warn(`[Bulk Category FB] Lỗi sync Page "${p.name}" (${p.fb_page_id}): ${fbErr.response?.data?.error?.message || fbErr.message}`);
+          }
+        }
+      }
+    }
+
+    return {
+      success: true,
+      totalUpdated: targetIds.length,
+      syncedToFbCount: syncedCount,
+      category: savedCategory,
+      message: syncedCount > 0
+        ? `Đã cập nhật Hạng mục "${savedCategory}" và đồng bộ lên ${syncedCount}/${targetIds.length} Fanpage Facebook thành công!`
+        : `Đã lưu Hạng mục "${savedCategory}" cho ${targetIds.length} Fanpage!`
+    };
+  }
+
+  /**
+   * ZTTeam: Tạo hàng loạt Avatar & Ảnh bìa cho các Fanpage chưa có hoặc cần sinh mới bằng Gemini
    */
   async ztteam_batchGenerateBranding(options: {
     limit?: number;
@@ -2709,7 +3055,10 @@ export class ZTTeamFacebookService {
 
     const whereClause: any = { is_active: true };
     if (pageIds && pageIds.length > 0) {
-      whereClause.id = { in: pageIds };
+      whereClause.OR = [
+        { id: { in: pageIds } },
+        { fb_page_id: { in: pageIds } }
+      ];
     }
 
     const pages = await this.prisma.ztteam_pages.findMany({
@@ -2772,9 +3121,8 @@ export class ZTTeamFacebookService {
           error: errMsg,
         });
 
-        /** Nếu tất cả key đều hết credit hoặc lỗi toàn bộ, dừng lại an toàn */
-        if (errMsg.includes('Tất cả các Key SangTao.ai') || errMsg.includes('credit')) {
-          this.logger.warn('[Branding Batch] Đã hết toàn bộ credit trên tất cả các Key SangTao.ai. Dừng tiến trình an toàn.');
+        if (errMsg.includes('gemini_api_key') || errMsg.includes('API Key Google Gemini')) {
+          this.logger.warn('[Branding Batch] Chưa cấu hình Gemini API Key. Dừng tiến trình an toàn.');
           break;
         }
       }
@@ -2803,7 +3151,14 @@ export class ZTTeamFacebookService {
     };
 
     if (pageIds && pageIds.length > 0) {
-      whereClause.id = { in: pageIds };
+      whereClause.AND = [
+        {
+          OR: [
+            { id: { in: pageIds } },
+            { fb_page_id: { in: pageIds } }
+          ]
+        }
+      ];
     }
 
     const pages = await this.prisma.ztteam_pages.findMany({

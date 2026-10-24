@@ -7,7 +7,7 @@ export class ZTTeamAuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  ztteam_login(@Body() signInDto: Record<string, any>) {
-    return this.authService.ztteam_login(signInDto.email, signInDto.password);
+  ztteam_login(@Body() signInDto: Record<string, any> = {}) {
+    return this.authService.ztteam_login(signInDto?.email, signInDto?.password);
   }
 }

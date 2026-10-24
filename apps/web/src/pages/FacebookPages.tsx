@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useZTTeamFacebookStore } from '../stores/facebookStore';
 import { useUIStore } from '../stores/uiStore';
@@ -239,6 +239,13 @@ function FanpageCard({ page, isExpired, testingPageId, handleTestPost, handleTog
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                   <span className="material-symbols-outlined text-[12px]">apps</span>
                   <span className="truncate max-w-[100px]">{page.appName}</span>
+                </span>
+              )}
+
+              {page.category && (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1" title={`Hạng mục: ${page.category}`}>
+                  <span className="material-symbols-outlined text-[12px]">category</span>
+                  <span className="truncate max-w-[130px]">{page.category}</span>
                 </span>
               )}
 
@@ -630,6 +637,17 @@ export default function FacebookPages() {
   const [bulkAutoPublish, setBulkAutoPublish] = useState<boolean>(true);
   const [bulkBgmList, setBulkBgmList] = useState<any[]>([]);
 
+  /** State Modal Bộ Nhận Diện AI & Hạng Mục Hàng Loạt (Theo BM / Đã chọn) */
+  const [isBulkBrandingModalOpen, setIsBulkBrandingModalOpen] = useState(false);
+  const [bulkBrandingTargetScope, setBulkBrandingTargetScope] = useState<'selected' | 'bm'>('selected');
+  const [bulkBrandingBM, setBulkBrandingBM] = useState<string>('');
+  const [bulkBrandingCategory, setBulkBrandingCategory] = useState<string>('');
+  const [bulkBrandingOverwrite, setBulkBrandingOverwrite] = useState<boolean>(false);
+  const [isSubmittingBulkCategory, setIsSubmittingBulkCategory] = useState<boolean>(false);
+  const [isSubmittingBulkGenerate, setIsSubmittingBulkGenerate] = useState<boolean>(false);
+  const [isSubmittingBulkApply, setIsSubmittingBulkApply] = useState<boolean>(false);
+  const [bulkBrandingProgressMsg, setBulkBrandingProgressMsg] = useState<string | null>(null);
+
   const uniqueOwners = Array.from(new Set(pages.map(p => p.ownerName).filter(Boolean)));
   const uniqueBusinesses = Array.from(new Set(pages.map(p => p.businessName).filter(Boolean)));
   const uniqueTags = Array.from(new Set(pages.flatMap(p => p.tags || [])));
@@ -793,6 +811,106 @@ export default function FacebookPages() {
       ztteam_showToast(err.response?.data?.message || err.message || 'Lỗi khi áp dụng cấu hình', 'error');
     } finally {
       setIsSubmittingBulkSchedule(false);
+    }
+  };
+
+  /** Danh sách Fanpage mục tiêu áp dụng cho Bộ Nhận Diện AI */
+  const bulkBrandingTargetPages = useMemo(() => {
+    if (bulkBrandingTargetScope === 'bm') {
+      if (!bulkBrandingBM) return [];
+      return pages.filter(p => p.businessName === bulkBrandingBM && p.isActive !== false);
+    }
+    return pages.filter(p => selectedPageIds.includes(p.id) && p.isActive !== false);
+  }, [bulkBrandingTargetScope, bulkBrandingBM, pages, selectedPageIds]);
+
+  const bulkBrandingTargetIds = useMemo(() => {
+    return bulkBrandingTargetPages.map(p => (p as any).internalId || p.id);
+  }, [bulkBrandingTargetPages]);
+
+  /** Xử lý cập nhật Hạng mục hàng loạt (theo BM hoặc Page đã chọn) */
+  const handleBulkUpdateCategorySubmit = async () => {
+    if (bulkBrandingTargetIds.length === 0) {
+      ztteam_showToast('Vui lòng chọn ít nhất 1 Fanpage hoặc chọn Doanh Nghiệp (BM)', 'error');
+      return;
+    }
+    if (!bulkBrandingCategory.trim()) {
+      ztteam_showToast('Vui lòng chọn hoặc nhập Hạng mục cần áp dụng', 'error');
+      return;
+    }
+    try {
+      setIsSubmittingBulkCategory(true);
+      setBulkBrandingProgressMsg('Đang lưu hạng mục và đồng bộ Facebook...');
+      const res = await api.post('/facebook/pages/bulk-update-category', {
+        pageIds: bulkBrandingTargetIds,
+        category: bulkBrandingCategory.trim(),
+      });
+      if (res.data?.success) {
+        ztteam_showToast(res.data.message || `Đã cập nhật hạng mục cho ${res.data.updatedCount || bulkBrandingTargetIds.length} Page!`, 'success');
+        setBulkBrandingProgressMsg(`Đã cập nhật xong hạng mục "${bulkBrandingCategory.trim()}"`);
+        await ztteam_fetchPagesFromDB();
+      }
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || err.message || 'Lỗi cập nhật hạng mục', 'error');
+      setBulkBrandingProgressMsg(null);
+    } finally {
+      setIsSubmittingBulkCategory(false);
+    }
+  };
+
+  /** Xử lý tạo Bộ nhận diện AI hàng loạt bằng Gemini */
+  const handleBulkGenerateBrandingSubmit = async () => {
+    if (bulkBrandingTargetIds.length === 0) {
+      ztteam_showToast('Vui lòng chọn ít nhất 1 Fanpage hoặc chọn Doanh Nghiệp (BM)', 'error');
+      return;
+    }
+    try {
+      setIsSubmittingBulkGenerate(true);
+      setBulkBrandingProgressMsg(`Gemini đang tạo Avatar & Ảnh bìa 2K cho ${bulkBrandingTargetIds.length} Fanpage... Vui lòng đợi trong giây lát.`);
+      const res = await api.post('/facebook/pages/branding/batch-generate', {
+        pageIds: bulkBrandingTargetIds,
+        overwriteExisting: bulkBrandingOverwrite,
+      });
+      if (res.data?.success) {
+        ztteam_showToast(res.data.message || `Gemini đã tạo xong bộ nhận diện cho ${res.data.count || 0} Page!`, 'success');
+        setBulkBrandingProgressMsg(`Hoàn tất: Gemini đã tạo thành công ảnh nhận diện 2K.`);
+        await ztteam_fetchPagesFromDB();
+      }
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || err.message || 'Lỗi khi tạo bộ nhận diện Gemini', 'error');
+      setBulkBrandingProgressMsg(null);
+    } finally {
+      setIsSubmittingBulkGenerate(false);
+    }
+  };
+
+  /** Xử lý gắn bộ nhận diện lên Facebook hàng loạt */
+  const handleBulkApplyBrandingSubmit = async () => {
+    if (bulkBrandingTargetIds.length === 0) {
+      ztteam_showToast('Vui lòng chọn ít nhất 1 Fanpage hoặc chọn Doanh Nghiệp (BM)', 'error');
+      return;
+    }
+    const confirm = await ztteam_showConfirm(
+      'Gắn Bộ Nhận Diện Lên Facebook',
+      `Bạn có chắc chắn muốn gắn Avatar & Ảnh bìa AI lên ${bulkBrandingTargetPages.length} Fanpage Facebook thật? Ảnh bìa sẽ được tải vào kho ẩn không tạo bài viết rác.`
+    );
+    if (!confirm) return;
+
+    try {
+      setIsSubmittingBulkApply(true);
+      setBulkBrandingProgressMsg(`Đang gắn Avatar & Ảnh bìa lên ${bulkBrandingTargetIds.length} Fanpage Facebook thật...`);
+      const res = await api.post('/facebook/pages/branding/batch-apply', {
+        pageIds: bulkBrandingTargetIds,
+      });
+      if (res.data?.success) {
+        ztteam_showToast(res.data.message || `Đã gắn thành công lên ${res.data.appliedCount || 0} Fanpage!`, 'success');
+        setBulkBrandingProgressMsg(`Hoàn tất gắn lên Facebook (${res.data.appliedCount || 0} thành công)`);
+        await ztteam_fetchPagesFromDB();
+      }
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || err.message || 'Lỗi gắn lên Facebook', 'error');
+      setBulkBrandingProgressMsg(null);
+    } finally {
+      setIsSubmittingBulkApply(false);
     }
   };
 
@@ -1189,6 +1307,26 @@ export default function FacebookPages() {
                 <span className="material-symbols-outlined text-sm">rss_feed</span>
                 <span>Gán Nguồn Cào</span>
               </button>
+
+              <button
+                onClick={() => {
+                  if (selectedPageIds.length === 0 && filterBusiness) {
+                    setBulkBrandingTargetScope('bm');
+                    setBulkBrandingBM(filterBusiness);
+                  } else if (selectedPageIds.length === 0) {
+                    setBulkBrandingTargetScope('selected');
+                    handleSelectAllCurrentTab();
+                  } else {
+                    setBulkBrandingTargetScope('selected');
+                  }
+                  setIsBulkBrandingModalOpen(true);
+                }}
+                className="px-3 py-1 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 font-bold flex items-center gap-1.5 transition-colors border border-cyan-500/40"
+                title="Thay đổi Hạng mục & Sáng tạo bộ nhận diện AI bằng Gemini cho từng BM hoặc Page đã chọn"
+              >
+                <span className="material-symbols-outlined text-sm">palette</span>
+                <span>Bộ Nhận Diện AI (Gemini)</span>
+              </button>
             </div>
           </div>
 
@@ -1373,6 +1511,17 @@ export default function FacebookPages() {
             >
               <span className="material-symbols-outlined text-base">tune</span>
               <span>Cài Đặt Lịch & Kiểu Video</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setBulkBrandingTargetScope('selected');
+                setIsBulkBrandingModalOpen(true);
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-blue-700 via-cyan-600 to-blue-600 hover:opacity-90 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-cyan-500/20 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-base">palette</span>
+              <span>Bộ Nhận Diện AI (Gemini)</span>
             </button>
 
             <button
@@ -1800,6 +1949,290 @@ export default function FacebookPages() {
                   <span className="material-symbols-outlined text-sm">done_all</span>
                 )}
                 <span>Xác nhận áp dụng cho {selectedPageIds.length} Page</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/** MODAL BỘ NHẬN DIỆN AI & HẠNG MỤC HÀNG LOẠT (THEO BM / ĐÃ CHỌN) */}
+      {isBulkBrandingModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-fb-surface w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl space-y-5 border border-slate-700/60 flex flex-col">
+            
+            {/** Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-fb-surface-hover/50">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shadow-lg">
+                  <span className="material-symbols-outlined text-2xl">palette</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-lg text-fb-text">Bộ Nhận Diện AI & Hạng Mục Fanpage</h3>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                      Google Gemini 2K
+                    </span>
+                  </div>
+                  <p className="text-xs text-fb-text-muted mt-0.5">
+                    Đổi hạng mục hàng loạt, tự động tạo Avatar (1:1) & Ảnh bìa (16:9) bằng Gemini AI và gắn lên Facebook theo BM
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsBulkBrandingModalOpen(false);
+                  setBulkBrandingProgressMsg(null);
+                }}
+                className="w-8 h-8 rounded-full hover:bg-fb-surface-hover flex items-center justify-center text-fb-text-muted hover:text-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/** Progress Notification Banner */}
+            {bulkBrandingProgressMsg && (
+              <div className="p-3 bg-blue-950/50 rounded-xl border border-blue-500/30 text-xs text-cyan-300 flex items-center gap-2.5 animate-pulse">
+                <span className="material-symbols-outlined text-base shrink-0">info</span>
+                <span>{bulkBrandingProgressMsg}</span>
+              </div>
+            )}
+
+            <div className="space-y-5">
+              {/** PHẦN 1: PHẠM VI ÁP DỤNG (THEO BM HOẶC PAGE ĐÃ CHỌN) */}
+              <div className="p-4 bg-fb-surface-hover/30 rounded-2xl border border-fb-surface-hover/50 space-y-3">
+                <label className="block text-xs font-bold text-fb-text uppercase tracking-wider">
+                  1. Chọn Phạm Vi Áp Dụng
+                </label>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBulkBrandingTargetScope('bm')}
+                    className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                      bulkBrandingTargetScope === 'bm'
+                        ? 'bg-blue-600/20 border-blue-500 text-blue-400 shadow-md'
+                        : 'bg-fb-surface-hover/40 border-transparent text-fb-text-muted hover:text-white'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">corporate_fare</span>
+                    <span>Theo Doanh Nghiệp (BM)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBulkBrandingTargetScope('selected')}
+                    className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                      bulkBrandingTargetScope === 'selected'
+                        ? 'bg-blue-600/20 border-blue-500 text-blue-400 shadow-md'
+                        : 'bg-fb-surface-hover/40 border-transparent text-fb-text-muted hover:text-white'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">check_box</span>
+                    <span>Các Page Đã Chọn ({selectedPageIds.length})</span>
+                  </button>
+                </div>
+
+                {bulkBrandingTargetScope === 'bm' ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-fb-text-muted mb-1.5">
+                      Chọn Doanh Nghiệp (BM) cần thao tác:
+                    </label>
+                    <CustomDropdown
+                      value={bulkBrandingBM}
+                      onChange={(val) => setBulkBrandingBM(String(val))}
+                      options={[
+                        { value: '', label: '-- Chọn Doanh Nghiệp (BM) --' },
+                        ...uniqueBusinesses.map(bName => ({
+                          value: bName,
+                          label: `${bName} (${pages.filter(p => p.businessName === bName && p.isActive !== false).length} Fanpage)`
+                        }))
+                      ]}
+                      className="w-full"
+                    />
+                  </div>
+                ) : (
+                  selectedPageIds.length === 0 && (
+                    <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-300 flex items-center justify-between">
+                      <span>Bạn chưa tích chọn Fanpage nào ngoài danh sách.</span>
+                      <button
+                        type="button"
+                        onClick={handleSelectAllCurrentTab}
+                        className="font-bold underline hover:text-amber-200 ml-2"
+                      >
+                        Chọn tất cả ({currentTabPages.length} Page)
+                      </button>
+                    </div>
+                  )
+                )}
+
+                <div className="flex items-center justify-between text-xs text-fb-text-muted pt-1">
+                  <span>Số lượng Fanpage sẽ áp dụng:</span>
+                  <span className="font-extrabold text-cyan-400 text-sm">
+                    {bulkBrandingTargetPages.length} Fanpage
+                  </span>
+                </div>
+              </div>
+
+              {/** PHẦN 2: THAY ĐỔI HẠNG MỤC (CATEGORY) HÀNG LOẠT */}
+              <div className="p-4 bg-fb-surface-hover/30 rounded-2xl border border-fb-surface-hover/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center">1</span>
+                    <span className="text-xs font-bold text-fb-text uppercase tracking-wider">Đổi Hạng Mục Page Hàng Loạt</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBulkUpdateCategorySubmit}
+                    disabled={isSubmittingBulkCategory || bulkBrandingTargetPages.length === 0}
+                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {isSubmittingBulkCategory ? (
+                      <>
+                        <span className="material-symbols-outlined animate-spin text-sm">sync</span>
+                        <span>Đang Cập Nhật...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-sm">save</span>
+                        <span>Cập Nhật Hạng Mục</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-fb-text-muted leading-relaxed">
+                  Lưu hạng mục mới vào cơ sở dữ liệu và gửi cập nhật Graph API lên Fanpage Facebook. Hạng mục này cũng sẽ được AI Gemini sử dụng trực tiếp để phác thảo ảnh Avatar và Bìa đúng chủ đề.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-bold text-fb-text mb-1">
+                      Hạng mục mẫu phổ biến
+                    </label>
+                    <CustomDropdown
+                      value={bulkBrandingCategory}
+                      onChange={(val) => setBulkBrandingCategory(String(val))}
+                      options={[
+                        { value: '', label: '-- Chọn hạng mục Facebook chính xác --' },
+                        { value: 'Thẩm mỹ viện', label: 'Thẩm mỹ viện (Beauty Salon)' },
+                        { value: 'Trang web tin tức và truyền thông', label: 'Trang web tin tức và truyền thông (News & Media)' },
+                        { value: 'Người sáng tạo nội dung số', label: 'Người sáng tạo nội dung số (Digital Creator)' },
+                        { value: 'Trang web giải trí', label: 'Trang web giải trí (Entertainment Website)' },
+                        { value: 'Giải trí', label: 'Giải trí (Just for Fun)' },
+                        { value: 'Cộng đồng', label: 'Cộng đồng (Community)' },
+                        { value: 'Làm đẹp, mỹ phẩm & chăm sóc cá nhân', label: 'Làm đẹp, mỹ phẩm & chăm sóc cá nhân (Beauty & Care)' },
+                        { value: 'Blog cá nhân', label: 'Blog cá nhân (Personal Blog)' },
+                        { value: 'Film', label: 'Film (Phim ảnh)' },
+                        { value: 'Doanh nhân', label: 'Doanh nhân / Khởi nghiệp (Entrepreneur)' },
+                        { value: 'Nhiếp ảnh gia', label: 'Nhiếp ảnh gia (Photographer)' },
+                        { value: 'Nhạc sĩ/Ban nhạc', label: 'Nhạc sĩ / Ban nhạc (Musician/Band)' },
+                        { value: 'Doanh nghiệp địa phương', label: 'Doanh nghiệp địa phương (Local Business)' },
+                      ]}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-fb-text mb-1">
+                      Hoặc nhập tùy chỉnh hạng mục / ID
+                    </label>
+                    <input
+                      type="text"
+                      value={bulkBrandingCategory}
+                      onChange={(e) => setBulkBrandingCategory(e.target.value)}
+                      placeholder="Ví dụ: Người sáng tạo nội dung số, Thẩm mỹ viện..."
+                      className="w-full bg-fb-surface-hover/80 border border-fb-surface-hover focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-fb-text focus:outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/** PHẦN 3: TỰ ĐỘNG TẠO BỘ NHẬN DIỆN BẰNG GEMINI 2K */}
+              <div className="p-4 bg-fb-surface-hover/30 rounded-2xl border border-fb-surface-hover/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center justify-center">2</span>
+                    <span className="text-xs font-bold text-fb-text uppercase tracking-wider">Tạo Lại Cả Bộ Nhận Diện (Gemini AI)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBulkGenerateBrandingSubmit}
+                    disabled={isSubmittingBulkGenerate || bulkBrandingTargetPages.length === 0}
+                    className="px-4 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-90 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {isSubmittingBulkGenerate ? (
+                      <>
+                        <span className="material-symbols-outlined animate-spin text-sm">sync</span>
+                        <span>Gemini Đang Tạo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                        <span>Tạo Lại Cả Bộ (Gemini)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-fb-text-muted leading-relaxed">
+                  Gemini sẽ quét ngữ cảnh từ Hạng mục, website nguồn WordPress và 3 bài viết gần nhất của từng Fanpage để tự động vẽ Avatar (1:1) và Ảnh bìa (16:9) đạt chuẩn độ phân giải 2K.
+                </p>
+
+                <label className="flex items-center gap-2.5 text-xs text-fb-text cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={bulkBrandingOverwrite}
+                    onChange={(e) => setBulkBrandingOverwrite(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-0 focus:ring-offset-0 bg-slate-900 cursor-pointer"
+                  />
+                  <span>Vẽ lại cả những Fanpage đã từng có ảnh nhận diện (Ghi đè ảnh cũ)</span>
+                </label>
+              </div>
+
+              {/** PHẦN 4: GẮN LÊN FACEBOOK HÀNG LOẠT */}
+              <div className="p-4 bg-fb-surface-hover/30 rounded-2xl border border-fb-surface-hover/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center">3</span>
+                    <span className="text-xs font-bold text-fb-text uppercase tracking-wider">Gắn Lên Facebook Hàng Loạt</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleBulkApplyBrandingSubmit}
+                    disabled={isSubmittingBulkApply || bulkBrandingTargetPages.length === 0}
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {isSubmittingBulkApply ? (
+                      <>
+                        <span className="material-symbols-outlined animate-spin text-sm">sync</span>
+                        <span>Đang Gắn Lên FB...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-sm">cloud_upload</span>
+                        <span>Gắn Lên Fanpage Thật</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-fb-text-muted leading-relaxed">
+                  Hệ thống sẽ tải ảnh bìa vào kho ảnh ẩn (<code className="text-cyan-400">published=false</code>) hoàn toàn <b>không tạo bài viết rác</b> trên bảng tin người theo dõi, đồng thời cập nhật ảnh đại diện Page.
+                </p>
+              </div>
+            </div>
+
+            {/** Modal Footer */}
+            <div className="pt-3 border-t border-fb-surface-hover/50 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBulkBrandingModalOpen(false);
+                  setBulkBrandingProgressMsg(null);
+                }}
+                className="px-5 py-2 bg-fb-surface-hover hover:bg-fb-surface-hover/80 text-fb-text font-bold rounded-xl text-xs transition-colors"
+              >
+                Đóng
               </button>
             </div>
           </div>
