@@ -1,11 +1,11 @@
 import { Body, Controller, Post, Get, Param, UseGuards, Request, Put, Delete, Patch, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ztteam_getStorageRoot } from '../common/ztteam_storage.util';
 import { ZTTeamFacebookService } from './facebook.service';
 import { ZTTeamAuthGuard } from '../auth/auth.guard';
+const { diskStorage } = require('multer');
 
 @Controller('facebook')
 @UseGuards(ZTTeamAuthGuard)
@@ -164,15 +164,15 @@ export class ZTTeamFacebookController {
   @Post('pages/:pageId/branding/upload')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: (req, file, cb) => {
+      destination: (req: any, file: any, cb: any) => {
         const uploadDir = path.join(ztteam_getStorageRoot(), 'branding');
         if (!fs.existsSync(uploadDir)) {
           fs.mkdirSync(uploadDir, { recursive: true });
         }
         cb(null, uploadDir);
       },
-      filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname) || '.png';
+      filename: (req: any, file: any, cb: any) => {
+        const ext = path.extname(file?.originalname || '') || '.png';
         const type = req.body?.type || 'branding';
         cb(null, `${type}_manual_${Date.now()}_${Math.random().toString(36).substring(7)}${ext}`);
       }
