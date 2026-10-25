@@ -424,8 +424,7 @@ export class ZTTeamHookVideoService {
           );
 
           // TỰ ĐỘNG KHÓA CỨNG MẪU NÀY CHO FANPAGE NÀY VĨNH VIỄN VÀO DATABASE
-          const targetPageId = imageRecord.page_id || imageRecord.page?.id;
-          if (targetPageId && chosenTemplate?.id && !assignedTemplateId) {
+          if (targetPageId && targetPageId !== 'default_page' && chosenTemplate?.id && !assignedTemplateId) {
             try {
               await this.prisma.ztteam_pages.update({
                 where: { id: targetPageId },
