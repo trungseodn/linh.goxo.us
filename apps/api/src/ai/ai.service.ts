@@ -723,7 +723,7 @@ CRITICAL REQUIREMENTS:
 5. EMOTIONAL TRIGGERS: Emphasize family betrayal, public humiliation, financial manipulation, hidden evidence, or underestimated protagonists.
 6. WRITING STYLE: Natural American English, short punchy sentences (1-2 sentences per paragraph), believable human storytelling voice.
 7. KEYWORD HIGHLIGHTS: In each paragraph, wrap 1 to 2 key dramatic phrases in <span class="hl">...</span> (e.g. <span class="hl">secret bank account</span>, <span class="hl">shocking discovery</span>).
-8. TOTAL LENGTH: Keep between 75 and 95 words total across all 3 paragraphs so text fits comfortably in the framed video card.
+8. TOTAL LENGTH: Keep between 65 and 80 words total across all 3 paragraphs (20-25 words each) so large bold typography fits strictly inside the framed video card without overflowing.
 9. OUTPUT FORMAT: Return strictly 3 paragraphs separated by double line breaks. No title, no numbering, no markdown headers, and DO NOT include "Continue Reading" or explanations.
 
 Story Title: "${cleanTitle}"
@@ -870,8 +870,8 @@ Do not force every element into one story.
 - Maintain a believable, human storytelling voice.
 
 5. STORY LENGTH & VISUAL READABILITY
-- Target 160–200 English words across the entire story (Body roughly 4 short paragraphs).
-- The story must be suitable for a vertical 9:16 Facebook story image with large bold typography (47px).
+- Target 140–165 English words across the entire story (Opening hook ~15-20 words, Body roughly 3-4 short punchy paragraphs of 30-40 words each).
+- The text MUST strictly stay within the framed video card with generous breathing room.
 - Every sentence must either advance the conflict, increase emotional tension, reveal a meaningful detail, or build toward the cliffhanger.
 - Remove anything unnecessary.
 
