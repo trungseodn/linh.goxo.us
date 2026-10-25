@@ -87,6 +87,11 @@ model ztteam_pages {
   auto_publish_enabled           Boolean  @default(true)
   add_link_to_caption            Boolean  @default(false)
   add_link_to_comment            Boolean  @default(false)
+  link_mode                      String   @default("delayed_2step") /** 'immediate', 'delayed_2step', 'view_threshold' */
+  link_view_threshold            Int      @default(1000)
+  link_target_position           String   @default("comment") /** 'comment', 'caption', 'both' */
+  link_fallback_hours            Int      @default(24) /** 0 = không fallback, >0 = tự gắn link sau X giờ nếu chưa đạt view */
+  link_fallback_action           String   @default("inject") /** 'inject' (tự gắn link sau X giờ), 'skip' (bỏ qua giữ sạch) */
   schedule_mode                  String   @default("fixed") 
   schedule_fixed_times           String[] @default([]) 
   schedule_immediate_gap_minutes Int      @default(60) 
@@ -211,6 +216,11 @@ model ztteam_reels {
   posted_at         DateTime?
   fb_post_id        String?
   post_retry_count  Int       @default(0)
+  link_injected         Boolean   @default(false)
+  link_injected_at      DateTime?
+  injected_views_count  Int       @default(0)
+  last_views_checked    Int       @default(0)
+  last_views_checked_at DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 
@@ -262,6 +272,11 @@ model ztteam_images {
   comment_step      Int       @default(0) /** 0: cho 1h, 1: da dang comment moi (cho doc gia hoac fallback 5h), 2: da reply Part 2 */
   hook_comment_id   String?
   hook_comment_at   DateTime?
+  link_injected         Boolean   @default(false)
+  link_injected_at      DateTime?
+  injected_views_count  Int       @default(0)
+  last_views_checked    Int       @default(0)
+  last_views_checked_at DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 

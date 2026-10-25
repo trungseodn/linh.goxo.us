@@ -783,6 +783,11 @@ export class ZTTeamFacebookService {
       auto_publish_enabled: page.auto_publish_enabled,
       add_link_to_caption: page.add_link_to_caption,
       add_link_to_comment: page.add_link_to_comment,
+      link_mode: (page as any).link_mode || 'delayed_2step',
+      link_view_threshold: (page as any).link_view_threshold !== undefined ? (page as any).link_view_threshold : 1000,
+      link_target_position: (page as any).link_target_position || 'comment',
+      link_fallback_hours: (page as any).link_fallback_hours !== undefined ? (page as any).link_fallback_hours : 24,
+      link_fallback_action: (page as any).link_fallback_action || 'inject',
       schedule_mode: page.schedule_mode,
       schedule_fixed_times: page.schedule_fixed_times,
       schedule_immediate_gap_minutes: page.schedule_immediate_gap_minutes,
@@ -841,8 +846,13 @@ export class ZTTeamFacebookService {
       video_engine: config.video_engine || 'hook_image',
       default_bgm: config.default_bgm !== undefined ? config.default_bgm : null,
       auto_publish_enabled: config.auto_publish_enabled !== undefined ? config.auto_publish_enabled : true,
-      add_link_to_caption: config.add_link_to_caption,
-      add_link_to_comment: config.add_link_to_comment,
+      add_link_to_caption: config.add_link_to_caption !== undefined ? config.add_link_to_caption : false,
+      add_link_to_comment: config.add_link_to_comment !== undefined ? config.add_link_to_comment : false,
+      link_mode: config.link_mode !== undefined ? config.link_mode : undefined,
+      link_view_threshold: config.link_view_threshold !== undefined ? Number(config.link_view_threshold) : undefined,
+      link_target_position: config.link_target_position !== undefined ? config.link_target_position : undefined,
+      link_fallback_hours: config.link_fallback_hours !== undefined ? Number(config.link_fallback_hours) : undefined,
+      link_fallback_action: config.link_fallback_action !== undefined ? config.link_fallback_action : undefined,
       schedule_mode: config.schedule_mode,
       schedule_fixed_times: config.schedule_fixed_times,
       schedule_immediate_gap_minutes: config.schedule_immediate_gap_minutes,
@@ -1527,6 +1537,129 @@ export class ZTTeamFacebookService {
       this.logger.error('Error publishing comment to Facebook', error.response?.data || error.message);
       throw error;
     }
+  }
+
+  /**
+   * ZTTeam: Cập nhật Caption (description) của video đã xuất bản trên Fanpage
+   */
+  async ztteam_updateVideoDescription(pageId: string, videoId: string, description: string) {
+    const page = await this.prisma.ztteam_pages.findFirst({
+      where: {
+        OR: [
+          { fb_page_id: pageId },
+          { id: pageId }
+        ]
+      }
+    });
+
+    if (!page || !page.page_token_encrypted) {
+      throw new Error('Fanpage không tồn tại hoặc chưa cấu hình token');
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `https://graph.facebook.com/${this.API_VERSION}/${videoId}`,
+          {
+            description,
+            access_token: page.page_token_encrypted,
+          }
+        )
+      );
+      this.logger.log(`Successfully updated description for video ${videoId}`);
+      return response.data;
+    } catch (error: any) {
+      this.logger.error(`Error updating description for video ${videoId}`, error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * ZTTeam: Lấy lượt xem và thông tin video đơn lẻ từ Graph API
+   */
+  async ztteam_getVideoMetrics(pageId: string, videoId: string): Promise<{ views: number; description?: string } | null> {
+    const page = await this.prisma.ztteam_pages.findFirst({
+      where: {
+        OR: [
+          { fb_page_id: pageId },
+          { id: pageId }
+        ]
+      }
+    });
+
+    if (!page || !page.page_token_encrypted) return null;
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `https://graph.facebook.com/${this.API_VERSION}/${videoId}`,
+          {
+            params: {
+              fields: 'id,views,description,video_insights.metric(blue_reels_play_count){values}',
+              access_token: page.page_token_encrypted,
+            }
+          }
+        )
+      );
+      const data = response.data;
+      const vViews = Number(data?.views) || 0;
+      const bluePlays = data?.video_insights?.data?.[0]?.values?.[0]?.value;
+      const vReach = typeof bluePlays === 'number' ? bluePlays : 0;
+      const totalViews = Math.max(vViews, vReach);
+
+      return {
+        views: totalViews,
+        description: data?.description || '',
+      };
+    } catch (e: any) {
+      this.logger.warn(`Failed to fetch video metrics for ${videoId}: ${e.response?.data?.error?.message || e.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * ZTTeam: Batch lấy lượt xem của 50 video gần nhất trên Fanpage để tiết kiệm quota API
+   */
+  async ztteam_getPageRecentVideoMetrics(pageId: string, limit = 50): Promise<Map<string, { views: number; description?: string }>> {
+    const page = await this.prisma.ztteam_pages.findFirst({
+      where: {
+        OR: [
+          { fb_page_id: pageId },
+          { id: pageId }
+        ]
+      }
+    });
+
+    const resultMap = new Map<string, { views: number; description?: string }>();
+    if (!page || !page.page_token_encrypted) return resultMap;
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `https://graph.facebook.com/${this.API_VERSION}/${page.fb_page_id}/videos`,
+          {
+            params: {
+              fields: 'id,views,description,video_insights.metric(blue_reels_play_count){values}',
+              limit,
+              access_token: page.page_token_encrypted,
+            }
+          }
+        )
+      );
+      const videos = response.data?.data || [];
+      for (const v of videos) {
+        const vViews = Number(v.views) || 0;
+        const bluePlays = v.video_insights?.data?.[0]?.values?.[0]?.value;
+        const vReach = typeof bluePlays === 'number' ? bluePlays : 0;
+        resultMap.set(v.id, {
+          views: Math.max(vViews, vReach),
+          description: v.description || '',
+        });
+      }
+    } catch (e: any) {
+      this.logger.warn(`Failed to fetch recent videos for page ${page.name}: ${e.response?.data?.error?.message || e.message}`);
+    }
+    return resultMap;
   }
 
   /**

@@ -73,6 +73,11 @@ export class ZTTeamPublisherCron {
       /** 0. Xử lý quy trình comment tự động sau 1 giờ và reply Part 2 sau 15 phút cho các bài đã đăng */
       await this.ztteam_handleDelayedComments();
 
+      /** 0.1 Xử lý tự động gắn link theo ngưỡng view video (chạy mỗi 5 phút) */
+      if (new Date().getMinutes() % 5 === 0) {
+        await this.ztteam_handleViewThresholdLinkInjection();
+      }
+
       /** 1. Tìm các Reel đã render xong đang chờ đăng (xếp theo thời gian tạo cũ nhất trước) */
       const pendingReels = await this.prisma.ztteam_reels.findMany({
         where: {
@@ -363,7 +368,9 @@ export class ZTTeamPublisherCron {
       const utmCampaign = slugify(page?.name || 'page');
       const trackingLink = reel.wp_post_url ? `${reel.wp_post_url}${reel.wp_post_url.includes('?') ? '&' : '?'}utm_source=reel&utm_medium=${utmMedium}&utm_campaign=${utmCampaign}` : '';
 
-      if (page.add_link_to_caption && reel.wp_post_url) {
+      const isViewThreshold = page.link_mode === 'view_threshold';
+
+      if (!isViewThreshold && page.add_link_to_caption && reel.wp_post_url) {
         const prefixes = [
           '👉 Discover more here:',
           '🔥 Read the full story:',
@@ -381,7 +388,7 @@ export class ZTTeamPublisherCron {
         description
       );
 
-      if (page.add_link_to_comment && reel.wp_post_url && response.id) {
+      if (!isViewThreshold && page.add_link_to_comment && reel.wp_post_url && response.id) {
         try {
           const commentPrefixes = [
             '👉 Discover more here:',
@@ -409,6 +416,8 @@ export class ZTTeamPublisherCron {
           posted_at: new Date(),
           fb_post_id: response.id,
           post_retry_count: 0,
+          link_injected: !isViewThreshold && (page.add_link_to_caption || page.add_link_to_comment),
+          link_injected_at: (!isViewThreshold && (page.add_link_to_caption || page.add_link_to_comment)) ? new Date() : null,
         }
       });
 
@@ -951,6 +960,194 @@ export class ZTTeamPublisherCron {
       }
     } catch (error: any) {
       this.logger.error(`Error in ztteam_handleDelayedComments: ${error.message}`);
+    }
+  }
+
+  /**
+   * ZTTeam: Tự động quét lượt xem video và gắn link vào Comment hoặc Caption khi đạt ngưỡng view (View-Based Link Injection)
+   */
+  async ztteam_handleViewThresholdLinkInjection() {
+    try {
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      // 1. Quét các video Reels đã đăng trong 7 ngày chưa được gắn link và page có link_mode = 'view_threshold'
+      const pendingReels = await this.prisma.ztteam_reels.findMany({
+        where: {
+          is_posted: true,
+          fb_post_id: { not: null },
+          link_injected: false,
+          posted_at: { gte: sevenDaysAgo },
+          page: {
+            link_mode: 'view_threshold'
+          }
+        },
+        include: {
+          page: {
+            include: { fb_account: true }
+          }
+        },
+        take: 30
+      });
+
+      // 2. Quét các bài Image có video_url đã đăng dưới dạng video/reel trong 7 ngày
+      const pendingVideoImages = await this.prisma.ztteam_images.findMany({
+        where: {
+          is_posted: true,
+          fb_post_id: { not: null },
+          video_url: { not: null },
+          link_injected: false,
+          posted_at: { gte: sevenDaysAgo },
+          page: {
+            link_mode: 'view_threshold'
+          }
+        },
+        include: {
+          page: {
+            include: { fb_account: true }
+          }
+        },
+        take: 30
+      });
+
+      if (pendingReels.length === 0 && pendingVideoImages.length === 0) {
+        return;
+      }
+
+      this.logger.log(`[View-Based Link] Checking views for ${pendingReels.length} reels and ${pendingVideoImages.length} video images...`);
+
+      // Gom nhóm theo từng page để batch query metrics từ Facebook Graph API
+      const pageReelsMap = new Map<string, { page: any; reels: any[]; images: any[] }>();
+
+      for (const reel of pendingReels) {
+        if (!reel.page?.fb_page_id) continue;
+        if (!pageReelsMap.has(reel.page.id)) {
+          pageReelsMap.set(reel.page.id, { page: reel.page, reels: [], images: [] });
+        }
+        pageReelsMap.get(reel.page.id)!.reels.push(reel);
+      }
+
+      for (const img of pendingVideoImages) {
+        if (!img.page?.fb_page_id) continue;
+        if (!pageReelsMap.has(img.page.id)) {
+          pageReelsMap.set(img.page.id, { page: img.page, reels: [], images: [] });
+        }
+        pageReelsMap.get(img.page.id)!.images.push(img);
+      }
+
+      for (const [, group] of pageReelsMap) {
+        const { page, reels, images } = group;
+        if (!page.page_token_encrypted || !page.fb_page_id) continue;
+
+        // Batch lấy metrics của các video gần nhất trên fanpage
+        const recentMetrics = await this.facebookService.ztteam_getPageRecentVideoMetrics(page.fb_page_id, 100);
+
+        // Xử lý từng Reel
+        for (const reel of reels) {
+          await this.ztteam_processSinglePostViewThreshold(reel, page, recentMetrics, 'reel');
+        }
+
+        // Xử lý từng Image Video
+        for (const img of images) {
+          await this.ztteam_processSinglePostViewThreshold(img, page, recentMetrics, 'image');
+        }
+      }
+    } catch (error: any) {
+      this.logger.error(`Error in ztteam_handleViewThresholdLinkInjection: ${error.message}`);
+    }
+  }
+
+  private async ztteam_processSinglePostViewThreshold(
+    item: any,
+    page: any,
+    recentMetrics: Map<string, { views: number; description?: string }>,
+    type: 'reel' | 'image'
+  ) {
+    try {
+      const postId = item.fb_post_id;
+      if (!postId) return;
+
+      let metric = recentMetrics.get(postId);
+      if (!metric) {
+        metric = await this.facebookService.ztteam_getVideoMetrics(page.fb_page_id, postId) || undefined;
+      }
+
+      const currentViews = metric?.views || 0;
+      const targetThreshold = page.link_view_threshold || 1000;
+      const targetPos = page.link_target_position || 'comment';
+      const fallbackHours = page.link_fallback_hours !== undefined ? page.link_fallback_hours : 24;
+      const fallbackAction = page.link_fallback_action || 'inject';
+
+      const hoursElapsed = item.posted_at ? (Date.now() - new Date(item.posted_at).getTime()) / (1000 * 60 * 60) : 0;
+      const isThresholdReached = currentViews >= targetThreshold;
+      const isFallbackTimeout = fallbackHours > 0 && hoursElapsed >= fallbackHours;
+
+      // Chuẩn bị tracking link
+      const utmMedium = this.ztteam_slugify(page?.fb_account?.name || 'account');
+      const utmCampaign = this.ztteam_slugify(page?.name || 'page');
+      const trackingLink = item.wp_post_url
+        ? `${item.wp_post_url}${item.wp_post_url.includes('?') ? '&' : '?'}utm_source=reel&utm_medium=${utmMedium}&utm_campaign=${utmCampaign}`
+        : '';
+
+      const updateData: any = {
+        last_views_checked: currentViews,
+        last_views_checked_at: new Date(),
+      };
+
+      if (isThresholdReached || (isFallbackTimeout && fallbackAction === 'inject')) {
+        const triggerReason = isThresholdReached
+          ? `đạt ${currentViews} views (ngưỡng: ${targetThreshold})`
+          : `fallback sau ${hoursElapsed.toFixed(1)}h (ngưỡng: ${fallbackHours}h)`;
+
+        if (trackingLink) {
+          // Gắn vào comment
+          if (targetPos === 'comment' || targetPos === 'both') {
+            const commentPrefixes = [
+              '👉 Read the full story here:',
+              '🔥 Full details and story link below:',
+              '👇 Read the full episode here:',
+              '✨ Full story available here:',
+              '📌 Click to read the full story:'
+            ];
+            const prefix = commentPrefixes[Math.floor(Math.random() * commentPrefixes.length)];
+            await this.facebookService.ztteam_publishComment(page.fb_page_id, postId, `${prefix} ${trackingLink}`);
+          }
+
+          // Gắn vào caption
+          if (targetPos === 'caption' || targetPos === 'both') {
+            const currentDesc = metric?.description || item.ai_caption || '';
+            if (!currentDesc.includes(trackingLink)) {
+              const updatedDesc = `${currentDesc}\n\n👉 Full Story: ${trackingLink}`.trim();
+              await this.facebookService.ztteam_updateVideoDescription(page.fb_page_id, postId, updatedDesc);
+            }
+          }
+        }
+
+        updateData.link_injected = true;
+        updateData.link_injected_at = new Date();
+        updateData.injected_views_count = currentViews;
+
+        this.logger.log(`[View-Based Link] Injected link for ${type} ${item.id} on page ${page.name} (${triggerReason}, vị trí: ${targetPos})`);
+      } else if (isFallbackTimeout && fallbackAction === 'skip') {
+        updateData.link_injected = true;
+        updateData.injected_views_count = currentViews;
+        this.logger.log(`[View-Based Link Fallback] Post ${postId} on page ${page.name} exceeded fallback ${fallbackHours}h (${currentViews} views). Skipped injection to keep video clean.`);
+      }
+
+      // Lưu lại database
+      if (type === 'reel') {
+        await this.prisma.ztteam_reels.update({
+          where: { id: item.id },
+          data: updateData
+        });
+      } else {
+        await this.prisma.ztteam_images.update({
+          where: { id: item.id },
+          data: updateData
+        });
+      }
+    } catch (e: any) {
+      this.logger.error(`Error processing view threshold for post ${item.fb_post_id}: ${e.message}`);
     }
   }
 }
