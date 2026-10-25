@@ -63,6 +63,11 @@ export class ZTTeamFacebookController {
       defaultBgm?: string;
       autoPublishEnabled?: boolean;
       defaultReelTemplateId?: string | null;
+      linkMode?: 'view_threshold' | 'delayed_2step' | 'immediate' | 'none';
+      linkViewThreshold?: number;
+      linkTargetPosition?: 'comment' | 'caption' | 'both';
+      linkFallbackHours?: number;
+      linkFallbackAction?: 'inject' | 'skip';
     },
     @Request() req: any
   ) {

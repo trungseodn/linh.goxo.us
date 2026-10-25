@@ -1038,6 +1038,11 @@ export class ZTTeamFacebookService {
       defaultBgm?: string;
       autoPublishEnabled?: boolean;
       defaultReelTemplateId?: string | null;
+      linkMode?: 'view_threshold' | 'delayed_2step' | 'immediate' | 'none';
+      linkViewThreshold?: number;
+      linkTargetPosition?: 'comment' | 'caption' | 'both';
+      linkFallbackHours?: number;
+      linkFallbackAction?: 'inject' | 'skip';
     }
   ) {
     const {
@@ -1048,7 +1053,12 @@ export class ZTTeamFacebookService {
       videoEngine,
       defaultBgm,
       autoPublishEnabled,
-      defaultReelTemplateId
+      defaultReelTemplateId,
+      linkMode,
+      linkViewThreshold,
+      linkTargetPosition,
+      linkFallbackHours,
+      linkFallbackAction,
     } = data;
 
     if (!pageIds || pageIds.length === 0) {
@@ -1148,6 +1158,24 @@ export class ZTTeamFacebookService {
           }
         } else {
           updateData.default_reel_template_id = defaultReelTemplateId;
+        }
+      }
+
+      if (linkMode !== undefined) {
+        updateData.link_mode = linkMode;
+        updateData.add_link_to_caption = linkMode === 'immediate' && (linkTargetPosition === 'caption' || linkTargetPosition === 'both');
+        updateData.add_link_to_comment = linkMode === 'immediate' && (linkTargetPosition === 'comment' || linkTargetPosition === 'both');
+        if (linkViewThreshold !== undefined) {
+          updateData.link_view_threshold = Number(linkViewThreshold);
+        }
+        if (linkTargetPosition !== undefined) {
+          updateData.link_target_position = linkTargetPosition;
+        }
+        if (linkFallbackHours !== undefined) {
+          updateData.link_fallback_hours = Number(linkFallbackHours);
+        }
+        if (linkFallbackAction !== undefined) {
+          updateData.link_fallback_action = linkFallbackAction;
         }
       }
 

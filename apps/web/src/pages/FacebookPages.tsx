@@ -636,6 +636,11 @@ export default function FacebookPages() {
   const [bulkPostsPerDay, setBulkPostsPerDay] = useState<number>(4);
   const [bulkAutoPublish, setBulkAutoPublish] = useState<boolean>(true);
   const [bulkBgmList, setBulkBgmList] = useState<any[]>([]);
+  const [bulkLinkMode, setBulkLinkMode] = useState<'view_threshold' | 'delayed_2step' | 'immediate' | 'none'>('view_threshold');
+  const [bulkLinkViewThreshold, setBulkLinkViewThreshold] = useState<number>(1000);
+  const [bulkLinkTargetPosition, setBulkLinkTargetPosition] = useState<'comment' | 'caption' | 'both'>('comment');
+  const [bulkLinkFallbackHours, setBulkLinkFallbackHours] = useState<number>(24);
+  const [bulkLinkFallbackAction, setBulkLinkFallbackAction] = useState<'inject' | 'skip'>('inject');
 
   /** State Modal Bộ Nhận Diện AI & Hạng Mục Hàng Loạt (Theo BM / Đã chọn) */
   const [isBulkBrandingModalOpen, setIsBulkBrandingModalOpen] = useState(false);
@@ -801,6 +806,11 @@ export default function FacebookPages() {
         defaultReelTemplateId: bulkReelTemplateId,
         defaultBgm: bulkDefaultBgm || undefined,
         autoPublishEnabled: bulkAutoPublish,
+        linkMode: bulkLinkMode,
+        linkViewThreshold: bulkLinkViewThreshold,
+        linkTargetPosition: bulkLinkTargetPosition,
+        linkFallbackHours: bulkLinkFallbackHours,
+        linkFallbackAction: bulkLinkFallbackAction,
       });
       if (res.data?.success) {
         ztteam_showToast(res.data.message || 'Áp dụng cài đặt hàng loạt thành công!', 'success');
@@ -1927,6 +1937,179 @@ export default function FacebookPages() {
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${bulkAutoPublish ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
+              </div>
+
+              {/** PHẦN 4: CƠ CHẾ ĐIỀU HƯỚNG LINK WEBSITE */}
+              <div className="bg-fb-surface-hover/20 p-4 rounded-2xl border border-fb-surface-hover/40 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-cyan-400 text-[18px]">alt_route</span>
+                    <span className="text-xs font-bold text-fb-text uppercase tracking-wider">Cơ chế điều hướng Link Website</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    Áp dụng cho {selectedPageIds.length} Page
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">Phương thức điều hướng</label>
+                  <CustomDropdown
+                    value={bulkLinkMode}
+                    onChange={(v: any) => setBulkLinkMode(v)}
+                    options={[
+                      {
+                        value: 'view_threshold',
+                        label: '🎯 Gắn Link theo Lượt xem Video (Nuôi View -> Đạt mốc mới tự gắn link - Khuyên dùng)'
+                      },
+                      {
+                        value: 'none',
+                        label: '🚫 Không Thêm Link (Video & Bài viết hoàn toàn sạch 100%, không chèn link)'
+                      },
+                      {
+                        value: 'delayed_2step',
+                        label: '⚡ Tương tác thông minh 2 bước (Mồi YES sau 60p -> Reply Link sau 15p)'
+                      },
+                      {
+                        value: 'immediate',
+                        label: '🚀 Gắn Link ngay khi xuất bản (Cổ điển)'
+                      }
+                    ]}
+                  />
+                </div>
+
+                {/** Khi chọn Không thêm link */}
+                {bulkLinkMode === 'none' && (
+                  <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-[11px] text-emerald-200/90 leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-150">
+                    <span className="material-symbols-outlined text-emerald-400 text-[18px] mt-0.5 shrink-0">verified_user</span>
+                    <div>
+                      <strong className="text-emerald-300 block mb-0.5 font-bold">Chế độ không thêm link (100% Clean Video):</strong>
+                      <span>Toàn bộ {selectedPageIds.length} Fanpage được chọn sẽ <b>hoàn toàn không chèn bất kỳ đường link nào</b> vào Mô tả (Caption) hay Bình luận (Comment). Giúp video đạt mức phân phối đề xuất cao nhất.</span>
+                    </div>
+                  </div>
+                )}
+
+                {/** Khi chọn Gắn link theo view */}
+                {bulkLinkMode === 'view_threshold' && (
+                  <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in duration-150">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase">
+                          Ngưỡng lượt xem kích hoạt (Views Threshold)
+                        </label>
+                        <span className="text-[11px] text-cyan-400 font-black">
+                          {Number(bulkLinkViewThreshold).toLocaleString()} views
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        min="100"
+                        step="100"
+                        value={bulkLinkViewThreshold}
+                        onChange={e => setBulkLinkViewThreshold(Math.max(100, parseInt(e.target.value, 10) || 100))}
+                        className="w-full bg-fb-surface border border-fb-surface-hover/80 rounded-lg px-3 py-1.5 text-xs text-fb-text font-bold focus:border-fb-blue focus:outline-none"
+                        placeholder="Nhập số view..."
+                      />
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {[500, 1000, 2000, 5000, 10000].map(v => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setBulkLinkViewThreshold(v)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all ${
+                              bulkLinkViewThreshold === v
+                                ? 'bg-fb-blue text-white border-fb-blue shadow-xs'
+                                : 'bg-black/20 hover:bg-black/30 text-fb-text-muted border-white/5'
+                            }`}
+                          >
+                            {v.toLocaleString()} views
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
+                          Vị trí gắn Link
+                        </label>
+                        <CustomDropdown
+                          value={bulkLinkTargetPosition}
+                          onChange={(v: any) => setBulkLinkTargetPosition(v)}
+                          options={[
+                            { value: 'comment', label: '💬 Tự động gắn link vào Bình luận (Comment - An toàn nhất)' },
+                            { value: 'caption', label: '📝 Tự động sửa thêm link vào Mô tả video (Caption)' },
+                            { value: 'both', label: '🔥 Cả Bình luận & Mô tả video' }
+                          ]}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
+                          Thời gian Fallback (Dự phòng)
+                        </label>
+                        <CustomDropdown
+                          value={bulkLinkFallbackHours}
+                          onChange={(v: any) => setBulkLinkFallbackHours(Number(v))}
+                          options={[
+                            { value: 12, label: 'Sau 12 giờ nếu chưa đủ view' },
+                            { value: 24, label: 'Sau 24 giờ nếu chưa đủ view (Chuẩn)' },
+                            { value: 48, label: 'Sau 48 giờ nếu chưa đủ view' },
+                            { value: 0, label: 'Không giới hạn (Chỉ gắn khi đủ view)' }
+                          ]}
+                        />
+                      </div>
+                    </div>
+
+                    {bulkLinkFallbackHours > 0 && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
+                          Hành động khi hết thời gian Fallback
+                        </label>
+                        <CustomDropdown
+                          value={bulkLinkFallbackAction}
+                          onChange={(v: any) => setBulkLinkFallbackAction(v)}
+                          options={[
+                            { value: 'inject', label: '⚡ Tự động gắn link (Đảm bảo bài luôn có link điều hướng)' },
+                            { value: 'skip', label: '🛡️ Bỏ qua, không gắn link (Giữ video sạch 100%)' }
+                          ]}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/** Khi chọn Tương tác 2 bước */}
+                {bulkLinkMode === 'delayed_2step' && (
+                  <div className="space-y-2 text-[11px] text-fb-text-muted leading-relaxed animate-in fade-in duration-150">
+                    <div className="flex items-start gap-2 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                      <span className="material-symbols-outlined text-cyan-400 text-[16px] mt-0.5 shrink-0">check_circle</span>
+                      <div>
+                        <strong className="text-fb-text block">Caption sạch — Tránh bị Facebook bóp tương tác:</strong>
+                        <span>Không chèn link trực tiếp vào Caption. Tự động mồi bình luận "YES" sau 60p và Reply link sau 15p.</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/** Khi chọn Gắn ngay */}
+                {bulkLinkMode === 'immediate' && (
+                  <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in duration-150">
+                    <div>
+                      <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
+                        Vị trí gắn Link ngay khi đăng
+                      </label>
+                      <CustomDropdown
+                        value={bulkLinkTargetPosition}
+                        onChange={(v: any) => setBulkLinkTargetPosition(v)}
+                        options={[
+                          { value: 'comment', label: '💬 Bình luận (Đăng comment kèm link ngay sau khi video lên)' },
+                          { value: 'caption', label: '📝 Chèn trực tiếp vào Caption mô tả video' },
+                          { value: 'both', label: '🔥 Cả Bình luận & Caption' }
+                        ]}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

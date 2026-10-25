@@ -87,7 +87,7 @@ model ztteam_pages {
   auto_publish_enabled           Boolean  @default(true)
   add_link_to_caption            Boolean  @default(false)
   add_link_to_comment            Boolean  @default(false)
-  link_mode                      String   @default("delayed_2step") /** 'immediate', 'delayed_2step', 'view_threshold' */
+  link_mode                      String   @default("delayed_2step") /** 'immediate', 'delayed_2step', 'view_threshold', 'none' */
   link_view_threshold            Int      @default(1000)
   link_target_position           String   @default("comment") /** 'comment', 'caption', 'both' */
   link_fallback_hours            Int      @default(24) /** 0 = không fallback, >0 = tự gắn link sau X giờ nếu chưa đạt view */

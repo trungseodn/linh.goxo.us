@@ -49,7 +49,7 @@ export default function FacebookPageSettings() {
   const [autoPublishEnabled, setAutoPublishEnabled] = useState(true);
   const [addLinkToCaption, setAddLinkToCaption] = useState(false);
   const [addLinkToComment, setAddLinkToComment] = useState(false);
-  const [linkMode, setLinkMode] = useState<'delayed_2step' | 'view_threshold' | 'immediate'>('delayed_2step');
+  const [linkMode, setLinkMode] = useState<'view_threshold' | 'delayed_2step' | 'immediate' | 'none'>('view_threshold');
   const [linkViewThreshold, setLinkViewThreshold] = useState<number>(1000);
   const [linkTargetPosition, setLinkTargetPosition] = useState<'comment' | 'caption' | 'both'>('comment');
   const [linkFallbackHours, setLinkFallbackHours] = useState<number>(24);
@@ -1066,7 +1066,11 @@ export default function FacebookPageSettings() {
                       options={[
                         {
                           value: 'view_threshold',
-                          label: '🎯 Gắn Link theo Lượt xem Video (Nuôi View -> Đạt mốc mới gắn link - Khuyên dùng)'
+                          label: '🎯 Gắn Link theo Lượt xem Video (Nuôi View -> Đạt mốc mới tự gắn link - Khuyên dùng)'
+                        },
+                        {
+                          value: 'none',
+                          label: '🚫 Không Thêm Link (Video & Bài viết hoàn toàn sạch 100%, không chèn link)'
                         },
                         {
                           value: 'delayed_2step',
@@ -1079,6 +1083,17 @@ export default function FacebookPageSettings() {
                       ]}
                     />
                   </div>
+
+                  {/** Tùy chọn cho chế độ Không thêm link */}
+                  {linkMode === 'none' && (
+                    <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-[11px] text-emerald-200/90 leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-150">
+                      <span className="material-symbols-outlined text-emerald-400 text-[18px] mt-0.5 shrink-0">verified_user</span>
+                      <div>
+                        <strong className="text-emerald-300 block mb-0.5 font-bold">Chế độ không thêm link (100% Clean Video):</strong>
+                        <span>Hệ thống sẽ <b>hoàn toàn không chèn bất kỳ đường link nào</b> vào Mô tả (Caption) hay Bình luận (Comment). Bài viết sẽ được xuất bản thuần túy như nhà sáng tạo nội dung tự nhiên để tối ưu hóa phân phối Reach và tăng trưởng lượt theo dõi.</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/** Tùy chọn cho chế độ View Threshold */}
                   {linkMode === 'view_threshold' && (
@@ -1131,8 +1146,8 @@ export default function FacebookPageSettings() {
                             value={linkTargetPosition}
                             onChange={v => setLinkTargetPosition(v)}
                             options={[
-                              { value: 'comment', label: '💬 Bình luận (Comment - An toàn nhất)' },
-                              { value: 'caption', label: '📝 Sửa Mô tả video (Caption)' },
+                              { value: 'comment', label: '💬 Tự động gắn link vào Bình luận (Comment - An toàn nhất)' },
+                              { value: 'caption', label: '📝 Tự động sửa thêm link vào Mô tả video (Caption)' },
                               { value: 'both', label: '🔥 Cả Bình luận & Mô tả video' }
                             ]}
                           />

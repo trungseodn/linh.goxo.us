@@ -73,8 +73,8 @@ export class ZTTeamPublisherCron {
       /** 0. Xử lý quy trình comment tự động sau 1 giờ và reply Part 2 sau 15 phút cho các bài đã đăng */
       await this.ztteam_handleDelayedComments();
 
-      /** 0.1 Xử lý tự động gắn link theo ngưỡng view video (chạy mỗi 5 phút) */
-      if (new Date().getMinutes() % 5 === 0) {
+      /** 0.1 Xử lý tự động gắn link theo ngưỡng view video (chạy mỗi 2 phút) */
+      if (new Date().getMinutes() % 2 === 0) {
         await this.ztteam_handleViewThresholdLinkInjection();
       }
 
@@ -369,8 +369,10 @@ export class ZTTeamPublisherCron {
       const trackingLink = reel.wp_post_url ? `${reel.wp_post_url}${reel.wp_post_url.includes('?') ? '&' : '?'}utm_source=reel&utm_medium=${utmMedium}&utm_campaign=${utmCampaign}` : '';
 
       const isViewThreshold = page.link_mode === 'view_threshold';
+      const isNone = page.link_mode === 'none';
+      const isImmediate = page.link_mode === 'immediate';
 
-      if (!isViewThreshold && page.add_link_to_caption && reel.wp_post_url) {
+      if (isImmediate && page.add_link_to_caption && reel.wp_post_url) {
         const prefixes = [
           '👉 Discover more here:',
           '🔥 Read the full story:',
@@ -388,7 +390,7 @@ export class ZTTeamPublisherCron {
         description
       );
 
-      if (!isViewThreshold && page.add_link_to_comment && reel.wp_post_url && response.id) {
+      if (isImmediate && page.add_link_to_comment && reel.wp_post_url && response.id) {
         try {
           const commentPrefixes = [
             '👉 Discover more here:',
@@ -416,8 +418,8 @@ export class ZTTeamPublisherCron {
           posted_at: new Date(),
           fb_post_id: response.id,
           post_retry_count: 0,
-          link_injected: !isViewThreshold && (page.add_link_to_caption || page.add_link_to_comment),
-          link_injected_at: (!isViewThreshold && (page.add_link_to_caption || page.add_link_to_comment)) ? new Date() : null,
+          link_injected: isViewThreshold ? false : true,
+          link_injected_at: (isImmediate && (page.add_link_to_caption || page.add_link_to_comment)) ? new Date() : null,
         }
       });
 
@@ -542,7 +544,11 @@ export class ZTTeamPublisherCron {
       const utmCampaign = slugify(page?.name || 'page');
       const trackingLink = image.wp_post_url ? `${image.wp_post_url}${image.wp_post_url.includes('?') ? '&' : '?'}utm_source=image&utm_medium=${utmMedium}&utm_campaign=${utmCampaign}` : '';
 
-      if (page.add_link_to_caption && image.wp_post_url) {
+      const isViewThreshold = page.link_mode === 'view_threshold';
+      const isNone = page.link_mode === 'none';
+      const isImmediate = page.link_mode === 'immediate';
+
+      if (isImmediate && page.add_link_to_caption && image.wp_post_url) {
         const prefixes = [
           '👉 Discover more here:',
           '🔥 Read the full story:',
@@ -586,6 +592,26 @@ export class ZTTeamPublisherCron {
         );
       }
 
+      if (isImmediate && page.add_link_to_comment && image.wp_post_url && fbPostId) {
+        try {
+          const commentPrefixes = [
+            '👉 Discover more here:',
+            '🔥 Read the full story:',
+            '📌 Check out the details:',
+            '👇 Full article link:',
+            '🔗 Learn more at:'
+          ];
+          const commentPrefix = commentPrefixes[Math.floor(Math.random() * commentPrefixes.length)];
+          await this.facebookService.ztteam_publishComment(
+            page.fb_page_id,
+            fbPostId,
+            `${commentPrefix} ${trackingLink}`
+          );
+        } catch (e: any) {
+          this.logger.error(`Failed to post immediate comment for image ${image.id}: ${e.message}`);
+        }
+      }
+
       await this.prisma.ztteam_images.update({
         where: { id: image.id },
         data: {
@@ -593,7 +619,9 @@ export class ZTTeamPublisherCron {
           posted_at: new Date(),
           fb_post_id: fbPostId,
           status: 'POSTED',
-          comment_step: 0,
+          comment_step: page.link_mode === 'delayed_2step' ? 0 : 99,
+          link_injected: isViewThreshold ? false : true,
+          link_injected_at: (isImmediate && (page.add_link_to_caption || page.add_link_to_comment)) ? new Date() : null,
           post_retry_count: 0,
         }
       });
@@ -700,7 +728,10 @@ export class ZTTeamPublisherCron {
           is_posted: true,
           fb_post_id: { not: null },
           comment_step: 0,
-          posted_at: { gte: oneDayAgo, lte: oneHourAgo }
+          posted_at: { gte: oneDayAgo, lte: oneHourAgo },
+          page: {
+            link_mode: 'delayed_2step'
+          }
         },
         include: {
           page: {
