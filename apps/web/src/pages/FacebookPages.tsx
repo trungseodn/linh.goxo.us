@@ -1770,11 +1770,11 @@ export default function FacebookPages() {
                         options={[
                           {
                             value: 'text_story:random',
-                            label: '🎲 Text Story Reel: Tự Động Ngẫu Nhiên Mẫu (Ưu tiên mẫu chưa dùng - Khuyên dùng)'
+                            label: '🎲 Tự Động Phân Bổ Mẫu & Khóa Cứng Riêng Từng Page (Khuyên dùng)'
                           },
                           ...bulkTextStoryTemplates.map(t => ({
                             value: `text_story:${t.id}`,
-                            label: `📑 Text Story: ${t.name}`
+                            label: `🔒 Text Story: ${t.name}`
                           })),
                           {
                             value: 'hook_image',
@@ -1791,12 +1791,12 @@ export default function FacebookPages() {
                         {bulkVideoEngine === 'text_story' && (bulkReelTemplateId === 'random' || !bulkReelTemplateId) && (
                           <span className="text-emerald-400 font-medium flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                            <span><b>Chế độ thông minh:</b> Hệ thống sẽ tự động ưu tiên chọn các mẫu Text Story <b>chưa từng sử dụng</b> hoặc <b>ít sử dụng nhất</b> trên từng Fanpage trước.</span>
+                            <span><b>Tự động phân bổ & Khóa cứng:</b> Hệ thống sẽ tự động phân bổ đều các mẫu Text Story riêng biệt cho từng Fanpage và <b>khóa cứng vĩnh viễn</b> cho Page đó cho đến khi bạn đổi lại.</span>
                           </span>
                         )}
                         {bulkVideoEngine === 'text_story' && bulkReelTemplateId && bulkReelTemplateId !== 'random' && (
                           <span className="text-cyan-400 font-medium">
-                            📑 <b>Cố định mẫu:</b> Toàn bộ video Text Story của các Fanpage được chọn sẽ dùng duy nhất mẫu giao diện này.
+                            🔒 <b>Khóa chung 1 mẫu:</b> Toàn bộ các Fanpage được chọn sẽ cùng khóa cứng duy nhất mẫu giao diện này.
                           </span>
                         )}
                         {bulkVideoEngine === 'hook_image' && (

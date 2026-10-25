@@ -422,6 +422,22 @@ export class ZTTeamHookVideoService {
           this.logger.log(
             `[Text Story Reel] [Smart Rotation] Page "${pageName}" (Post: ${imageRecord.wp_post_id}) tự động chọn mẫu "${chosenTemplate.name}" (Lần dùng trên Page: ${minPageUses}, Toàn hệ thống: ${minGlobalUses}, Ứng viên: ${bestCandidates.length}/${dbTemplates.length})`
           );
+
+          // TỰ ĐỘNG KHÓA CỨNG MẪU NÀY CHO FANPAGE NÀY VĨNH VIỄN VÀO DATABASE
+          const targetPageId = imageRecord.page_id || imageRecord.page?.id;
+          if (targetPageId && chosenTemplate?.id && !assignedTemplateId) {
+            try {
+              await this.prisma.ztteam_pages.update({
+                where: { id: targetPageId },
+                data: { default_reel_template_id: chosenTemplate.id },
+              });
+              this.logger.log(
+                `[Text Story Reel] ĐÃ TỰ ĐỘNG KHÓA CỨNG MẪU "${chosenTemplate.name}" cho Fanpage "${pageName}" (PageID: ${targetPageId}) vĩnh viễn cho đến khi người dùng chọn lại!`
+              );
+            } catch (err: any) {
+              this.logger.warn(`Không thể khóa cứng default_reel_template_id cho page ${targetPageId}: ${err.message}`);
+            }
+          }
         }
 
         // Cập nhật số lần sử dụng của mẫu vừa được chọn để các bài tiếp theo ưu tiên các mẫu khác

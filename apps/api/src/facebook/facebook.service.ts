@@ -839,6 +839,34 @@ export class ZTTeamFacebookService {
       throw new Error('Fanpage không tồn tại hoặc bạn không có quyền');
     }
 
+    let finalReelTemplateId = config.default_reel_template_id;
+    if (config.default_reel_template_id === 'random' || config.default_reel_template_id === 'auto') {
+      const dbTemplates = await this.prisma.ztteam_templates.findMany({
+        where: { format: 'video', content_type: 'text_story' },
+        orderBy: { created_at: 'asc' },
+      });
+      if (dbTemplates.length > 0) {
+        const lockedPages = await this.prisma.ztteam_pages.findMany({
+          where: { default_reel_template_id: { not: null }, id: { not: page.id } },
+          select: { default_reel_template_id: true }
+        });
+        const lockedMap: Record<string, number> = {};
+        lockedPages.forEach(p => {
+          if (p.default_reel_template_id) {
+            lockedMap[p.default_reel_template_id] = (lockedMap[p.default_reel_template_id] || 0) + 1;
+          }
+        });
+        let minCount = Infinity;
+        dbTemplates.forEach(t => {
+          const c = lockedMap[t.id] || 0;
+          if (c < minCount) minCount = c;
+        });
+        const candidateTemplates = dbTemplates.filter(t => (lockedMap[t.id] || 0) === minCount);
+        const randTpl = candidateTemplates[Math.floor(Math.random() * candidateTemplates.length)];
+        finalReelTemplateId = randTpl.id;
+      }
+    }
+
     /** Update main page fields */
     const updateData: any = {
       tags: config.tags,
@@ -856,7 +884,7 @@ export class ZTTeamFacebookService {
       schedule_mode: config.schedule_mode,
       schedule_fixed_times: config.schedule_fixed_times,
       schedule_immediate_gap_minutes: config.schedule_immediate_gap_minutes,
-      default_reel_template_id: config.default_reel_template_id,
+      default_reel_template_id: finalReelTemplateId !== undefined ? finalReelTemplateId : page.default_reel_template_id,
       default_image_template_id: config.default_image_template_id,
       auto_create_enabled: config.auto_create_enabled,
       auto_scan_interval_hours: config.auto_scan_interval_hours,
@@ -1071,6 +1099,12 @@ export class ZTTeamFacebookService {
     };
 
     const results: any[] = [];
+    /** Nạp danh sách template Text Story để phân bổ tự động và khóa cứng cho từng page */
+    const dbTextStoryTemplates = await this.prisma.ztteam_templates.findMany({
+      where: { format: 'video', content_type: 'text_story' },
+      orderBy: { created_at: 'asc' },
+    });
+
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];
       /** Mỗi page lệch nhau đúng 2 phút (Page 0: +0p, Page 1: +2p, Page 2: +4p,...) */
@@ -1093,7 +1127,16 @@ export class ZTTeamFacebookService {
         updateData.default_bgm = defaultBgm || null;
       }
       if (defaultReelTemplateId !== undefined) {
-        updateData.default_reel_template_id = (defaultReelTemplateId === 'random' || !defaultReelTemplateId) ? null : defaultReelTemplateId;
+        if (defaultReelTemplateId === 'random' || !defaultReelTemplateId) {
+          // Tự động phân bổ mẫu riêng biệt cho từng Fanpage và KHÓA CỨNG VĨNH VIỄN
+          if (dbTextStoryTemplates.length > 0) {
+            updateData.default_reel_template_id = dbTextStoryTemplates[i % dbTextStoryTemplates.length].id;
+          } else {
+            updateData.default_reel_template_id = null;
+          }
+        } else {
+          updateData.default_reel_template_id = defaultReelTemplateId;
+        }
       }
 
       await this.prisma.ztteam_pages.update({

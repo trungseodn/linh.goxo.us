@@ -946,11 +946,11 @@ export default function FacebookPageSettings() {
                       options={[
                         {
                           value: 'text_story:random',
-                          label: '🎲 Text Story Reel: Tự Động Ngẫu Nhiên Mẫu (Ưu tiên mẫu chưa dùng - Khuyên dùng)'
+                          label: '🎲 Tự Động Chọn Mẫu & Khóa Cứng (Tự phân bổ mẫu riêng cho Page và khóa cố định)'
                         },
                         ...textStoryTemplates.map((t: any) => ({
                           value: `text_story:${t.id}`,
-                          label: `📑 Text Story: ${t.name}`
+                          label: `🔒 Text Story: ${t.name}`
                         })),
                         {
                           value: 'hook_image',
@@ -966,12 +966,12 @@ export default function FacebookPageSettings() {
                       {videoEngine === 'text_story' && (defaultReelTemplateId === 'random' || !defaultReelTemplateId) && (
                         <span className="text-emerald-400 font-medium flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                          <span><b>Chế độ thông minh:</b> Hệ thống sẽ tự động ưu tiên chọn các mẫu Text Story <b>chưa từng sử dụng</b> hoặc <b>ít sử dụng nhất</b> trên Fanpage này trước để bài đăng luôn đa dạng sắc thái.</span>
+                          <span><b>Tự động chọn & Khóa cứng:</b> Hệ thống sẽ tự động gán một mẫu Text Story chưa dùng cho Fanpage này và <b>khóa cứng mẫu đó vĩnh viễn</b> cho mọi video cho đến khi bạn tự chọn lại.</span>
                         </span>
                       )}
                       {videoEngine === 'text_story' && defaultReelTemplateId && defaultReelTemplateId !== 'random' && (
                         <span className="text-cyan-400 font-medium">
-                          📑 <b>Cố định mẫu:</b> Toàn bộ video Text Story của Fanpage này sẽ sử dụng cố định mẫu giao diện đã chọn.
+                          🔒 <b>Đang khóa cứng mẫu:</b> Fanpage này đang sử dụng cố định mẫu giao diện này cho tất cả video, đảm bảo đồng bộ nhận diện thương hiệu.
                         </span>
                       )}
                       {videoEngine === 'hook_image' && (
