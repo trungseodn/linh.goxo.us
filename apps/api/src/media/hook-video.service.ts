@@ -608,7 +608,7 @@ export class ZTTeamHookVideoService {
       width: 72px;
       height: 72px;
       border-radius: 50%;
-      border: 2px solid ${theme.hookColor};
+      border: 2px solid ${theme.ctaColor};
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
       object-fit: cover;
     }
@@ -617,7 +617,7 @@ export class ZTTeamHookVideoService {
       width: 72px;
       height: 72px;
       border-radius: 50%;
-      border: 2px solid ${theme.hookColor};
+      border: 2px solid ${theme.ctaColor};
       background: linear-gradient(135deg, #0e3e4b 0%, #061622 100%);
       display: flex;
       align-items: center;
@@ -721,7 +721,7 @@ export class ZTTeamHookVideoService {
       overflow: hidden;
     }
 
-    /** TIÊU ĐỀ MỞ MÀN CÂU CHUYỆN (VÀNG KIM NỔI BẬT TO 58px) */
+    /** TIÊU ĐỀ MỞ MÀN CÂU CHUYỆN (THEO MÀU HOOK CỦA TỪNG TEMPLATE) */
     .story-hook {
       font-family: 'Barlow Condensed', sans-serif;
       font-size: 58px;
@@ -730,7 +730,7 @@ export class ZTTeamHookVideoService {
       line-height: 1.22;
       margin-bottom: 24px;
       letter-spacing: -0.5px;
-      text-shadow: 0 0 24px rgba(245, 158, 11, 0.5);
+      text-shadow: 0 0 20px ${theme.hookColor}55, 0 3px 10px rgba(0, 0, 0, 0.9);
     }
 
     /** THÂN BÀI VIẾT TYPOGRAPHY BARLOW CONDENSED LẤP KÍN CARD */
@@ -750,11 +750,11 @@ export class ZTTeamHookVideoService {
       text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
     }
 
-    /** TỪ KHÓA ĐẮT GIÁ HIGHLIGHT VÀNG KIM ÁNH SÁNG */
+    /** TỪ KHÓA ĐẮT GIÁ HIGHLIGHT (THEO MÀU CỦA TỪNG TEMPLATE) */
     .hl {
       color: ${theme.hlColor} !important;
       font-weight: 900;
-      text-shadow: 0 0 16px rgba(245, 158, 11, 0.55);
+      text-shadow: 0 0 16px ${theme.hlColor}66;
     }
 
     /** NÚT KÊU GỌI HÀNH ĐỘNG CLIFFHANGER */
