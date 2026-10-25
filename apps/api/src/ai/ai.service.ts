@@ -707,24 +707,28 @@ CRITICAL RULES:
     const cleanTitle = (title || '').replace(/<[^>]*>?/gm, '').trim();
     const cleanContent = (content || '').replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim();
 
-    const systemPrompt = `You are a master viral Facebook Reel copywriter.
-Based strictly on the provided real story:
-Title: "${cleanTitle}"
-Story Details:
-"${cleanContent.substring(0, 3000)}"
+    const systemPrompt = `PROMPT: VIRAL FACEBOOK STORY HOOK GENERATOR (CONDENSED 3-PARAGRAPH REEL FORMAT)
+You are an expert English-language storyteller specializing in emotionally compelling Facebook story posts for American audiences aged 35–65.
+Your task is to transform the provided real story into ONE powerful, suspenseful 3-paragraph opening hook designed for a vertical video reel.
 
-Task:
-Write a viral, high-suspense 3-paragraph Hook in ENGLISH for a 10-second Facebook Reel.
+CORE STORYTELLING STRUCTURE:
+Follow this emotional progression:
+INJUSTICE → CONFLICT / HIDDEN ADVANTAGE → POWER REVERSAL & CLIFFHANGER
 
 CRITICAL REQUIREMENTS:
-1. TRUTHFUL TO ORIGINAL STORY: Every fact must be based strictly on the provided story details. Do NOT make up fake, irrelevant names or events.
-2. EXACTLY 3 DISTINCT PARAGRAPHS:
-   - Paragraph 1: An electrifying, curiosity-inducing opening hook based on the core event.
-   - Paragraph 2: The climax, shocking twist, or intense confrontation from the story.
-   - Paragraph 3: A compelling cliffhanger question or tease that makes the viewer desperate to read the full story in the comments.
-3. KEYWORD HIGHLIGHTS: In each paragraph, wrap 1 to 2 key phrases in <span class="hl">...</span> (e.g. <span class="hl">DNA test</span>, <span class="hl">secret room</span>).
-4. TOTAL LENGTH: Keep between 65 to 85 words total across all 3 paragraphs. (Do NOT exceed 95 words so text fits elegantly on screen).
-5. FORMAT OUTPUT: Return strictly 3 paragraphs separated by double line breaks. No titles, no numbering (like 1., 2.), no quotes, no markdown headers.`;
+1. TRUTHFUL TO ORIGINAL: Every character, quote, and detail must come strictly from the provided story.
+2. PARAGRAPH 1 (OPENING HOOK & INJUSTICE): Begin immediately with a shocking, unfair, or emotionally painful situation. 1-2 punchy sentences. (e.g., "Imagine discovering that your spouse transferred your entire retirement savings to their lover the morning of your surgery.")
+3. PARAGRAPH 2 (CONFLICT & HIDDEN ADVANTAGE): Build emotional tension. Reveal that the protagonist knows a crucial secret or holds evidence that the antagonist doesn't know about yet.
+4. PARAGRAPH 3 (POWER REVERSAL & CLIFFHANGER): The antagonist is about to lose control. End on an intense high-stakes moment or revelation immediately before the climax. Never explain the final resolution.
+5. EMOTIONAL TRIGGERS: Emphasize family betrayal, public humiliation, financial manipulation, hidden evidence, or underestimated protagonists.
+6. WRITING STYLE: Natural American English, short punchy sentences (1-2 sentences per paragraph), believable human storytelling voice.
+7. KEYWORD HIGHLIGHTS: In each paragraph, wrap 1 to 2 key dramatic phrases in <span class="hl">...</span> (e.g. <span class="hl">secret bank account</span>, <span class="hl">shocking discovery</span>).
+8. TOTAL LENGTH: Keep between 75 and 95 words total across all 3 paragraphs so text fits comfortably in the framed video card.
+9. OUTPUT FORMAT: Return strictly 3 paragraphs separated by double line breaks. No title, no numbering, no markdown headers, and DO NOT include "Continue Reading" or explanations.
+
+Story Title: "${cleanTitle}"
+Story Details:
+"${cleanContent.substring(0, 3500)}"`;
 
     try {
       const settings = await this.getSettings();
@@ -759,12 +763,12 @@ CRITICAL REQUIREMENTS:
       }
 
       if (rawResponse && rawResponse.trim().length > 30) {
-        /** Tách đoạn văn ưu tiên theo ngắt dòng kép, sau đó đến ngắt dòng đơn */
+        /** Tách đoạn văn ưu tiên theo ngắt dòng kép, lọc bỏ dòng 'Continue Reading' nếu có */
         let paragraphs = rawResponse
           .trim()
           .split(/\n\s*\n/)
           .map(p => p.trim())
-          .filter(p => p.length > 0);
+          .filter(p => p.length > 0 && !/^continue reading/i.test(p) && !/^read more/i.test(p));
 
         /** Nếu không có ngắt dòng kép, thử tách theo ngắt dòng đơn */
         if (paragraphs.length < 2) {
@@ -772,7 +776,7 @@ CRITICAL REQUIREMENTS:
             .trim()
             .split(/\n+/)
             .map(p => p.trim())
-            .filter(p => p.length > 15);
+            .filter(p => p.length > 15 && !/^continue reading/i.test(p) && !/^read more/i.test(p));
           if (singleLineSplits.length >= 2) {
             paragraphs = singleLineSplits;
           }
@@ -791,7 +795,10 @@ CRITICAL REQUIREMENTS:
         }
 
         if (paragraphs.length >= 1) {
-          const finalParagraphs = paragraphs.slice(0, 3);
+          const finalParagraphs = paragraphs.slice(0, 3).map(p => {
+            // Lọc bỏ 'Continue Reading...' ở đuôi đoạn cuối nếu bị dính
+            return p.replace(/\s*Continue Reading[.…]*\s*$/i, '').trim();
+          });
           const hookHtml = finalParagraphs.map(p => `<p>${p}</p>`).join('\n');
           const plainText = finalParagraphs.join('\n\n').replace(/<[^>]*>?/gm, '');
           return { hookHtml, plainText, paragraphs: finalParagraphs };
@@ -819,23 +826,99 @@ CRITICAL REQUIREMENTS:
     const cleanTitle = (title || '').replace(/<[^>]*>?/gm, '').trim();
     const cleanContent = (content || '').replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim();
 
-    const systemPrompt = `You are a master viral Facebook Story copywriter specializing in high-suspense Text Story Reels.
-Based strictly on the provided real story:
+    const systemPrompt = `PROMPT: VIRAL FACEBOOK STORY HOOK GENERATOR
+You are an expert English-language storyteller specializing in emotionally compelling Facebook story posts for American audiences aged 35–65.
+Your task is to read the full story provided below and transform it into ONE powerful, suspenseful opening story designed to capture attention, encourage readers to keep reading, and create genuine curiosity about what happens next.
+
+1. CORE STORYTELLING STRUCTURE
+Follow this emotional progression:
+INJUSTICE → CONFLICT → EMOTIONAL TENSION → HIDDEN ADVANTAGE → POWER REVERSAL → CLIFFHANGER
+- Begin with a shocking, unfair, or emotionally painful situation.
+- Introduce the antagonist and their selfish or manipulative behavior.
+- Make the reader emotionally connect with the protagonist.
+- Reveal that the protagonist knows something the antagonist doesn't.
+- Gradually build anticipation toward a satisfying reversal.
+- End immediately before a major secret, confrontation, or revelation.
+- Do not reveal the final outcome.
+
+2. THE OPENING HOOK (LINE 1)
+The first 1–2 sentences must immediately establish:
+- Who is involved.
+- What unfair or shocking event happened.
+- Why the situation matters.
+- A hint that the antagonist is about to lose control.
+Use direct, emotionally charged language.
+Example: "My husband announced our divorce at my retirement party. But when my boss stood up and grabbed the microphone, his smile disappeared."
+Avoid slow introductions, background explanations, generic statements, and unnecessary descriptions.
+
+3. EMOTIONAL TRIGGERS
+Prioritize emotional elements naturally supported by the original story:
+Family betrayal, Public humiliation, Financial manipulation, Injustice, Hidden wealth or identity, Unexpected evidence, Underestimated protagonists, Secret knowledge, A surprising reversal of power.
+Do not force every element into one story.
+
+4. WRITING STYLE
+- Write in natural American English.
+- Prefer first-person narration when appropriate.
+- Use short, punchy sentences.
+- Use emotionally meaningful dialogue.
+- Keep paragraphs between 1–3 sentences.
+- Make the story understandable within the first 3 seconds of reading.
+- Avoid unnecessary names, complicated timelines, and excessive background information.
+- Use specific details, numbers, or amounts when they exist in the source.
+- Show emotions through actions and dialogue rather than explaining them.
+- Avoid repetitive AI-style phrases, exaggerated metaphors, and generic suspense language.
+- Maintain a believable, human storytelling voice.
+
+5. STORY LENGTH & VISUAL READABILITY
+- Target 160–200 English words across the entire story (Body roughly 4 short paragraphs).
+- The story must be suitable for a vertical 9:16 Facebook story image with large bold typography (47px).
+- Every sentence must either advance the conflict, increase emotional tension, reveal a meaningful detail, or build toward the cliffhanger.
+- Remove anything unnecessary.
+
+6. CLIFFHANGER RULES
+The final 2–3 sentences in the last paragraph must create a powerful unanswered question.
+Prefer endings involving:
+- Someone discovering unexpected evidence.
+- A powerful character suddenly losing confidence.
+- An unexpected person interrupting a confrontation.
+- A hidden document about to be revealed.
+- The protagonist calmly preparing to expose the truth.
+Example:
+"He looked at the envelope in my hand. His face went pale.
+'Where did you get that?' he whispered.
+I smiled. 'You should ask your mother.'"
+Never explain the resolution in the hook.
+Do not use generic endings such as "You won't believe what happened next."
+
+7. CONTENT ACCURACY
+- Preserve the original characters, events, relationships, and important facts.
+- You may rearrange events or simplify dialogue for storytelling clarity.
+- Do not invent major twists, financial amounts, crimes, or character motivations.
+- If the original story lacks a dramatic reversal, build suspense from its actual conflict rather than fabricating one.
+- Ensure the hook accurately represents the full story readers will find on the website.
+
+8. KEYWORD HIGHLIGHTS
+In each paragraph, wrap 1 or 2 dramatic phrases or key quotes in <span class="hl">...</span> (e.g. <span class="hl">secret account</span>, <span class="hl">threw the drink in my face</span>).
+
+9. OUTPUT FORMAT
+Output ONLY the finished English story hook with no preface, explanations, or analysis.
+Structure:
+Line 1: Opening hook (1–2 compelling sentences).
+[blank line]
+Paragraph 1: Background of unfairness & conflict.
+[blank line]
+Paragraph 2: Emotional tension & antagonist's arrogance.
+[blank line]
+Paragraph 3: Protagonist's hidden advantage / secret knowledge.
+[blank line]
+Paragraph 4: Power reversal & intense final cliffhanger (2–3 sentences).
+
+Do NOT include the words "Continue Reading", hashtags, or markdown headers in the output.
+
+ORIGINAL STORY:
 Title: "${cleanTitle}"
 Story Details:
-"${cleanContent.substring(0, 4500)}"
-
-Task:
-Format and condense this real story into a dense, electrifying viral Text Story for a 9:16 vertical card.
-
-CRITICAL REQUIREMENTS:
-1. TRUTHFUL TO ORIGINAL: Every character, quote, and detail must come strictly from the provided story.
-2. FIRST LINE: A dramatic, quote-based opening hook line (1 short sentence in quotation marks, e.g. "Get in the back, Lena. Paige needs your seat.")
-3. STORY BODY: Exactly 4 paragraphs with gripping pacing leading to the climax.
-4. TOTAL LENGTH: Total word count across the body MUST be between 140 and 170 words (roughly 35-42 words per paragraph) so with large 47px bold font it fills the 9:16 card border completely without leaving empty space or overflowing.
-5. HIGHLIGHTS: In each paragraph, wrap 1 or 2 dramatic phrases or key quotes in <span class="hl">...</span>.
-6. SUSPENSE CLIFFHANGER: End on an intense high-stakes moment or revelation that compels the viewer to read the rest in the comments.
-7. FORMAT: Return the opening hook quote on line 1, followed by a blank line, followed by the 4 paragraphs separated by blank lines. No numbering, no markdown headers.`;
+"${cleanContent.substring(0, 4500)}"`;
 
     try {
       const settings = await this.getSettings();
@@ -870,16 +953,33 @@ CRITICAL REQUIREMENTS:
       }
 
       if (rawResponse && rawResponse.trim().length > 100) {
+        // Lọc bỏ dòng 'Continue Reading...' hoặc các dòng phân cách/chú thích thừa
         const chunks = rawResponse
           .trim()
           .split(/\n\s*\n/)
           .map(p => p.trim())
-          .filter(p => p.length > 0);
+          .filter(p => p.length > 0 && !/^continue reading/i.test(p) && !/^read more/i.test(p));
 
-        if (chunks.length >= 4) {
+        if (chunks.length >= 2) {
           const hookQuote = chunks[0].replace(/^["'“”]+|["'“”]+$/g, '').trim();
-          const paragraphs = chunks.slice(1);
-          const plainText = paragraphs.join('\n\n').replace(/<[^>]*>?/gm, '');
+          let paragraphs = chunks.slice(1).map(p => {
+            return p.replace(/\s*Continue Reading[.…]*\s*$/i, '').trim();
+          }).filter(p => p.length > 0);
+
+          // Giữ tối đa 4 đoạn kịch tính để vừa khít thẻ kính mờ 9:16
+          if (paragraphs.length > 4) {
+            paragraphs = paragraphs.slice(0, 4);
+          }
+
+          // Kiểm tra highlight, nếu AI quên bọc thẻ <span class="hl"> thì tự động bọc highlight theo regex
+          paragraphs = paragraphs.map(p => {
+            if (!p.includes('<span class="hl">')) {
+              return p.replace(/\b(husband|wife|marriage|hospital|police|secret|truth|money|million|house|car|lawyer|divorce|pain|tears|betrayal|revenge|company|evidence|envelope|will|account)\b/gi, (m) => `<span class="hl">${m}</span>`);
+            }
+            return p;
+          });
+
+          const plainText = [hookQuote, ...paragraphs].join('\n\n').replace(/<[^>]*>?/gm, '');
           return {
             hookQuote: `“${hookQuote}”`,
             paragraphs,
