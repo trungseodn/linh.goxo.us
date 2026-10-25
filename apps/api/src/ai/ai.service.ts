@@ -831,11 +831,11 @@ Format and condense this real story into a dense, electrifying viral Text Story 
 CRITICAL REQUIREMENTS:
 1. TRUTHFUL TO ORIGINAL: Every character, quote, and detail must come strictly from the provided story.
 2. FIRST LINE: A dramatic, quote-based opening hook line (1 short sentence in quotation marks, e.g. "Get in the back, Lena. Paige needs your seat.")
-3. STORY BODY: Exactly 5 or 6 paragraphs.
-4. TOTAL LENGTH: Total word count across the body MUST be between 250 and 280 words so it fills the screen card completely without leaving empty space.
+3. STORY BODY: Exactly 4 paragraphs with gripping pacing leading to the climax.
+4. TOTAL LENGTH: Total word count across the body MUST be between 140 and 170 words (roughly 35-42 words per paragraph) so with large 47px bold font it fills the 9:16 card border completely without leaving empty space or overflowing.
 5. HIGHLIGHTS: In each paragraph, wrap 1 or 2 dramatic phrases or key quotes in <span class="hl">...</span>.
 6. SUSPENSE CLIFFHANGER: End on an intense high-stakes moment or revelation that compels the viewer to read the rest in the comments.
-7. FORMAT: Return the opening hook quote on line 1, followed by a blank line, followed by the 5-6 paragraphs separated by blank lines. No numbering, no markdown headers.`;
+7. FORMAT: Return the opening hook quote on line 1, followed by a blank line, followed by the 4 paragraphs separated by blank lines. No numbering, no markdown headers.`;
 
     try {
       const settings = await this.getSettings();
@@ -896,7 +896,7 @@ CRITICAL REQUIREMENTS:
   }
 
   /**
-   * ZTTeam: Thuật toán fallback trích xuất 250 - 280 từ trực tiếp từ bài viết gốc
+   * ZTTeam: Thuật toán fallback trích xuất 150 - 170 từ trực tiếp từ bài viết gốc cho cỡ chữ 47px
    */
   private ztteam_fallbackTextStoryExtract(
     title: string,
@@ -904,10 +904,10 @@ CRITICAL REQUIREMENTS:
   ): { hookQuote: string; paragraphs: string[]; plainText: string } {
     const hookQuote = title.length > 5 ? `“${title}”` : '“A Story You Need To Hear...”';
     const rawWords = content.split(/\s+/).filter(w => w.length > 0);
-    const targetWords = rawWords.slice(0, 270);
+    const targetWords = rawWords.slice(0, 160);
 
-    /** Chia 270 từ thành 5-6 đoạn */
-    const paragraphCount = 5;
+    /** Chia 160 từ thành 4 đoạn cân đối */
+    const paragraphCount = 4;
     const chunkSize = Math.ceil(targetWords.length / paragraphCount);
     const paragraphs: string[] = [];
 

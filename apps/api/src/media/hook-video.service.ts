@@ -489,18 +489,18 @@ export class ZTTeamHookVideoService {
         );
 
         const wordCount = storyData.plainText.trim().split(/\s+/).length;
-        let fontSize = 33.5;
-        let lineHeight = 1.28;
-        let pGap = 14;
+        let fontSize = 47;
+        let lineHeight = 1.38;
+        let pGap = 24;
 
-        if (wordCount < 230) {
-          fontSize = 35.5;
-          lineHeight = 1.32;
-          pGap = 16;
-        } else if (wordCount > 290) {
-          fontSize = 31.5;
-          lineHeight = 1.24;
-          pGap = 12;
+        if (wordCount < 140) {
+          fontSize = 49;
+          lineHeight = 1.42;
+          pGap = 28;
+        } else if (wordCount > 180) {
+          fontSize = 44;
+          lineHeight = 1.35;
+          pGap = 20;
         }
 
         const htmlContent = `<!DOCTYPE html>
@@ -691,10 +691,10 @@ export class ZTTeamHookVideoService {
     /** THẺ BÀI VIẾT KÍNH MỜ (FROSTED GLASS) CAO 1575px, ĐÁY CHỈ CHỪA ĐÚNG ~10% (190px) */
     .glass-card-wrapper {
       position: absolute;
-      top: 155px;
-      left: 60px;
-      width: 960px;
-      height: ${theme.hasBottomPill ? '1540px' : '1575px'};
+      top: 165px;
+      left: 54px;
+      width: 972px;
+      height: ${theme.hasBottomPill ? '1530px' : '1560px'};
       z-index: 10;
     }
 
@@ -702,12 +702,12 @@ export class ZTTeamHookVideoService {
       width: 100%;
       height: 100%;
       background: ${theme.cardBg};
-      backdrop-filter: blur(36px);
-      -webkit-backdrop-filter: blur(36px);
-      border-radius: 36px;
-      border: ${theme.cardBorder};
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border-radius: 40px;
+      border: 3px solid ${theme.cardBorder.replace(/^[0-9.]+px\s+solid\s+/, '')};
       box-shadow: ${theme.cardGlow}, inset 0 1px 2px rgba(255, 255, 255, 0.18);
-      padding: 40px 46px 34px 46px;
+      padding: 44px 50px 32px 50px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -718,16 +718,16 @@ export class ZTTeamHookVideoService {
       flex-direction: column;
     }
 
-    /** TIÊU ĐỀ MỞ MÀN CÂU CHUYỆN (VÀNG KIM NỔI BẬT) */
+    /** TIÊU ĐỀ MỞ MÀN CÂU CHUYỆN (VÀNG KIM NỔI BẬT TO 58px) */
     .story-hook {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 44px;
-      font-weight: 700;
+      font-size: 58px;
+      font-weight: 900;
       color: ${theme.hookColor};
-      line-height: 1.20;
-      margin-bottom: 18px;
-      letter-spacing: -0.2px;
-      text-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+      line-height: 1.22;
+      margin-bottom: 24px;
+      letter-spacing: -0.5px;
+      text-shadow: 0 0 24px rgba(245, 158, 11, 0.5);
     }
 
     /** THÂN BÀI VIẾT TYPOGRAPHY BARLOW CONDENSED LẤP KÍN CARD */
@@ -740,18 +740,18 @@ export class ZTTeamHookVideoService {
     .story-p {
       font-family: 'Barlow Condensed', sans-serif;
       font-size: ${fontSize}px;
-      font-weight: 600;
+      font-weight: 700;
       line-height: ${lineHeight};
       color: ${theme.textColor};
-      letter-spacing: -0.15px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.75);
+      letter-spacing: -0.2px;
+      text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
     }
 
     /** TỪ KHÓA ĐẮT GIÁ HIGHLIGHT VÀNG KIM ÁNH SÁNG */
     .hl {
       color: ${theme.hlColor} !important;
-      font-weight: 700;
-      text-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+      font-weight: 900;
+      text-shadow: 0 0 16px rgba(245, 158, 11, 0.55);
     }
 
     /** NÚT KÊU GỌI HÀNH ĐỘNG CLIFFHANGER */
@@ -760,16 +760,17 @@ export class ZTTeamHookVideoService {
       justify-content: flex-end;
       align-items: center;
       width: 100%;
-      padding-top: 12px;
+      padding-top: 18px;
+      border-top: 2px solid rgba(255, 255, 255, 0.12);
     }
 
     .cta-text {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 37px;
-      font-weight: 700;
+      font-size: 36px;
+      font-weight: 800;
       color: ${theme.ctaColor};
       text-shadow: 0 0 18px rgba(56, 189, 248, 0.7);
-      letter-spacing: 0.3px;
+      letter-spacing: 0.5px;
     }
 
     /** BANNER PILL ĐÁY NỔI BẬT */
@@ -939,18 +940,18 @@ export class ZTTeamHookVideoService {
       const plainText = hookHtml.replace(/<[^>]*>?/gm, '');
       const wordCount = plainText.trim().split(/\s+/).length;
 
-      let fontSize = 36;
-      let lineMarginBottom = 24;
-      let textLineHeight = 1.48;
+      let fontSize = 47;
+      let lineMarginBottom = 26;
+      let textLineHeight = 1.40;
 
       if (wordCount <= 65) {
-        fontSize = 38;
-        lineMarginBottom = 26;
-        textLineHeight = 1.5;
+        fontSize = 49;
+        lineMarginBottom = 28;
+        textLineHeight = 1.44;
       } else if (wordCount > 90) {
-        fontSize = 32;
-        lineMarginBottom = 20;
-        textLineHeight = 1.42;
+        fontSize = 44;
+        lineMarginBottom = 22;
+        textLineHeight = 1.36;
       }
 
       /** 5. Xác định màu sắc cố định cho Fanpage nhận bài và Render Canvas qua Puppeteer */
@@ -997,26 +998,37 @@ export class ZTTeamHookVideoService {
       background: ${pal.background};
     }
 
-    /** KHUNG NỘI DUNG */
-    .content-container {
+    /** KHUNG BORDER KÍNH MỜ BO VIỀN CAO 1020px - NẰM FULL VÙNG DƯỚI */
+    .hook-card-wrapper {
       position: absolute;
-      top: 774px;
-      left: 0;
-      width: 1080px;
-      height: 1146px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      top: 795px;
+      left: 50px;
+      width: 980px;
+      height: 1020px;
       z-index: 10;
     }
 
-    /** FANPAGE HEADER */
+    .hook-card {
+      width: 100%;
+      height: 100%;
+      background: rgba(2, 28, 34, 0.76);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-radius: 36px;
+      border: 3px solid ${pal.accentBorder};
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px ${pal.accentBorder}40;
+      padding: 40px 46px 36px 46px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
     .fanpage-header-row {
-      width: 950px;
-      margin-top: 36px;
       display: flex;
       align-items: center;
-      gap: 22px;
+      gap: 20px;
+      padding-bottom: 22px;
+      border-bottom: 2px solid ${pal.accentBorder}40;
     }
 
     .fanpage-avatar {
@@ -1025,14 +1037,13 @@ export class ZTTeamHookVideoService {
       border-radius: 50%;
       background: ${pal.avatarGrad};
       border: 3.5px solid ${pal.accentBorder};
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 34px;
-      font-weight: 800;
+      font-size: 38px;
+      font-weight: 900;
       color: #ffffff;
-      letter-spacing: -0.5px;
       flex-shrink: 0;
       object-fit: cover;
     }
@@ -1040,75 +1051,63 @@ export class ZTTeamHookVideoService {
     .fanpage-meta {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
     .fanpage-name {
-      font-size: 38px;
+      font-size: 40px;
       font-weight: 800;
       color: #ffffff;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.4px;
       line-height: 1.15;
     }
 
     .fanpage-subtitle {
       font-size: 22px;
-      font-weight: 500;
+      font-weight: 600;
       color: #8ea5b0;
-      line-height: 1.2;
     }
 
-    /** ĐƯỜNG KẺ CHỈ VÀNG MẠ THANH MẢNH TRÊN */
-    .gold-divider-top {
-      width: 950px;
-      height: 2px;
-      margin-top: 24px;
-      margin-bottom: 26px;
-      background: linear-gradient(90deg, rgba(243,195,91,0.15) 0%, ${pal.accentBorder} 20%, ${pal.accentBorder} 80%, rgba(243,195,91,0.15) 100%);
-      box-shadow: 0 0 10px rgba(243, 195, 91, 0.3);
-    }
-
-    /** HOOK BODY TYPOGRAPHY (MONTSERRAT 36px CĂN TRÁI) */
+    /** THÂN BÀI VIẾT: CHỮ TO 47px, BOLD 700, NẰM FULL HOÀN HẢO TRONG BORDER */
     .hook-body {
-      width: 950px;
       display: flex;
       flex-direction: column;
+      gap: 26px;
+      flex-grow: 1;
+      justify-content: center;
+      padding: 10px 0;
     }
 
     .hook-p {
       font-size: ${fontSize}px;
-      font-weight: 600;
+      font-weight: 700;
       line-height: ${textLineHeight};
       color: #ffffff;
       text-align: left;
-      letter-spacing: -0.2px;
-      margin-bottom: ${lineMarginBottom}px;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-    }
-
-    .hook-p:last-child {
-      margin-bottom: 0;
+      letter-spacing: -0.3px;
+      text-shadow: 0 3px 10px rgba(0, 0, 0, 0.95);
     }
 
     .hl {
       color: ${pal.highlightColor} !important;
+      font-weight: 900;
+      text-shadow: 0 0 16px ${pal.highlightColor}80;
+    }
+
+    .hook-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-top: 20px;
+      border-top: 2px solid ${pal.accentBorder}40;
+    }
+
+    .footer-cta {
+      color: ${pal.highlightColor};
+      font-size: 35px;
       font-weight: 800;
-      text-shadow: 0 0 14px rgba(243, 195, 91, 0.35);
-    }
-
-    /** ĐƯỜNG KẺ CHỈ VÀNG MẠ THANH MẢNH DƯỚI */
-    .gold-divider-bottom {
-      width: 950px;
-      height: 2px;
-      margin-top: 6px;
-      background: linear-gradient(90deg, rgba(243,195,91,0.15) 0%, ${pal.accentBorder} 20%, ${pal.accentBorder} 80%, rgba(243,195,91,0.15) 100%);
-      box-shadow: 0 0 10px rgba(243, 195, 91, 0.3);
-    }
-
-    /** KHOẢNG ĐỆM TRÁNH NÚT REELS UI FACEBOOK */
-    .reels-ui-bottom-spacer {
-      height: 180px;
-      width: 100%;
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 16px ${pal.highlightColor}60;
     }
   </style>
 </head>
@@ -1116,26 +1115,27 @@ export class ZTTeamHookVideoService {
   <div class="top-transparent-window"></div>
   <div class="section-bottom-seamless"></div>
 
-  <div class="content-container">
-    <div class="fanpage-header-row">
-      ${pageAvatarDataUri
-          ? `<img src="${pageAvatarDataUri}" class="fanpage-avatar">`
-          : `<div class="fanpage-avatar">${pageName.substring(0, 2).toUpperCase()}</div>`
-        }
-      <div class="fanpage-meta">
-        <div class="fanpage-name">${pageName}</div>
-        <div class="fanpage-subtitle">Facebook Creator • Viral Stories</div>
+  <div class="hook-card-wrapper">
+    <div class="hook-card">
+      <div class="fanpage-header-row">
+        ${pageAvatarDataUri
+            ? `<img src="${pageAvatarDataUri}" class="fanpage-avatar">`
+            : `<div class="fanpage-avatar">${pageName.substring(0, 2).toUpperCase()}</div>`
+          }
+        <div class="fanpage-meta">
+          <div class="fanpage-name">${pageName}</div>
+          <div class="fanpage-subtitle">Facebook Creator • Viral Stories</div>
+        </div>
+      </div>
+
+      <div class="hook-body">
+        ${aiResult.paragraphs.map(p => `<p class="hook-p">${p}</p>`).join('\n        ')}
+      </div>
+
+      <div class="hook-footer">
+        <span class="footer-cta">Full Story In Comment 👇</span>
       </div>
     </div>
-
-    <div class="gold-divider-top"></div>
-
-    <div class="hook-body">
-      ${aiResult.paragraphs.map(p => `<p class="hook-p">${p}</p>`).join('\n      ')}
-    </div>
-
-    <div class="gold-divider-bottom"></div>
-    <div class="reels-ui-bottom-spacer"></div>
   </div>
 </body>
 </html>`;
