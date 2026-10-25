@@ -368,7 +368,7 @@ export default function FacebookPageSettings() {
         tags,
         post_format: postFormat,
         video_engine: videoEngine,
-        default_reel_template_id: defaultReelTemplateId === 'random' ? null : defaultReelTemplateId,
+        default_reel_template_id: defaultReelTemplateId || 'random',
         default_bgm: defaultBgm || null,
         auto_publish_enabled: autoPublishEnabled,
         add_link_to_caption: linkMode === 'immediate' && (linkTargetPosition === 'caption' || linkTargetPosition === 'both'),

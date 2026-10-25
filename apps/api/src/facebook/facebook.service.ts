@@ -841,10 +841,16 @@ export class ZTTeamFacebookService {
 
     let finalReelTemplateId = config.default_reel_template_id;
     if (config.default_reel_template_id === 'random' || config.default_reel_template_id === 'auto') {
-      const dbTemplates = await this.prisma.ztteam_templates.findMany({
-        where: { format: 'video', content_type: 'text_story' },
-        orderBy: { created_at: 'asc' },
+      let dbTemplates = await this.prisma.ztteam_templates.findMany({
+        where: { format: 'video', content_type: 'text_story', name: { startsWith: 'Text Story #' } },
+        orderBy: { name: 'asc' },
       });
+      if (dbTemplates.length === 0) {
+        dbTemplates = await this.prisma.ztteam_templates.findMany({
+          where: { format: 'video', content_type: 'text_story' },
+          orderBy: { created_at: 'asc' },
+        });
+      }
       if (dbTemplates.length > 0) {
         const lockedPages = await this.prisma.ztteam_pages.findMany({
           where: { default_reel_template_id: { not: null }, id: { not: page.id } },
@@ -1099,11 +1105,17 @@ export class ZTTeamFacebookService {
     };
 
     const results: any[] = [];
-    /** Nạp danh sách template Text Story để phân bổ tự động và khóa cứng cho từng page */
-    const dbTextStoryTemplates = await this.prisma.ztteam_templates.findMany({
-      where: { format: 'video', content_type: 'text_story' },
-      orderBy: { created_at: 'asc' },
+    /** Nạp danh sách template Text Story để phân bổ tự động và khóa cứng cho từng page (ưu tiên kho 50 mẫu đánh số) */
+    let dbTextStoryTemplates = await this.prisma.ztteam_templates.findMany({
+      where: { format: 'video', content_type: 'text_story', name: { startsWith: 'Text Story #' } },
+      orderBy: { name: 'asc' },
     });
+    if (dbTextStoryTemplates.length === 0) {
+      dbTextStoryTemplates = await this.prisma.ztteam_templates.findMany({
+        where: { format: 'video', content_type: 'text_story' },
+        orderBy: { created_at: 'asc' },
+      });
+    }
 
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];

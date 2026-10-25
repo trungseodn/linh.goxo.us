@@ -368,11 +368,17 @@ export class ZTTeamHookVideoService {
        * NHÁNH 1: ĐỊNH DẠNG TEXT STORY REEL (FROSTED GLASS CARD 9:16, ĐÁY CHỪA 10%)
        * ========================================================================= */
       if (engine === 'text_story') {
-        /** Tải danh sách các mẫu Text Story từ Database */
-        const dbTemplates = await this.prisma.ztteam_templates.findMany({
-          where: { format: 'video', content_type: 'text_story' },
-          orderBy: { created_at: 'asc' },
+        /** Tải danh sách các mẫu Text Story từ Database (ưu tiên kho 50 mẫu đánh số) */
+        let dbTemplates = await this.prisma.ztteam_templates.findMany({
+          where: { format: 'video', content_type: 'text_story', name: { startsWith: 'Text Story #' } },
+          orderBy: { name: 'asc' },
         });
+        if (dbTemplates.length === 0) {
+          dbTemplates = await this.prisma.ztteam_templates.findMany({
+            where: { format: 'video', content_type: 'text_story' },
+            orderBy: { created_at: 'asc' },
+          });
+        }
 
         let chosenTemplate: any = null;
         const assignedTemplateId = (imageRecord.page as any)?.default_reel_template_id;
