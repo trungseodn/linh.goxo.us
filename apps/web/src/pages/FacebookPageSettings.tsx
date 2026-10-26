@@ -49,7 +49,7 @@ export default function FacebookPageSettings() {
   const [autoPublishEnabled, setAutoPublishEnabled] = useState(true);
   const [addLinkToCaption, setAddLinkToCaption] = useState(false);
   const [addLinkToComment, setAddLinkToComment] = useState(false);
-  const [linkMode, setLinkMode] = useState<'view_threshold' | 'delayed_2step' | 'immediate' | 'none'>('view_threshold');
+  const [linkMode, setLinkMode] = useState<'view_threshold' | 'delayed_2step' | 'immediate' | 'none'>('immediate');
   const [linkViewThreshold, setLinkViewThreshold] = useState<number>(1000);
   const [linkTargetPosition, setLinkTargetPosition] = useState<'comment' | 'caption' | 'both'>('comment');
   const [linkFallbackHours, setLinkFallbackHours] = useState<number>(24);
@@ -1045,7 +1045,7 @@ export default function FacebookPageSettings() {
                 </div>
               )}
 
-              {/** Cơ chế điều hướng Link & Tương tác thông minh */}
+              {/** Cơ chế điều hướng Link Website (Chuẩn hóa Đăng tay & Gắn link ngay khi xuất bản) */}
               <div className="pt-2">
                 <div className="bg-fb-surface-hover/30 p-4 rounded-2xl border border-fb-blue/20 space-y-4">
                   <div className="flex items-center justify-between">
@@ -1054,7 +1054,7 @@ export default function FacebookPageSettings() {
                       <span className="text-xs font-bold text-fb-text uppercase tracking-wider">Cơ chế điều hướng Link Website</span>
                     </div>
                     <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      Tự động hóa
+                      Đăng tay & Gắn link ngay
                     </span>
                   </div>
 
@@ -1065,24 +1065,49 @@ export default function FacebookPageSettings() {
                       onChange={v => setLinkMode(v)}
                       options={[
                         {
-                          value: 'view_threshold',
-                          label: '🎯 Gắn Link theo Lượt xem Video (Nuôi View -> Đạt mốc mới tự gắn link - Khuyên dùng)'
+                          value: 'immediate',
+                          label: '🚀 Gắn Link ngay khi xuất bản (Tạo sẵn 1 đoạn Comment & Link để đăng tay)'
                         },
                         {
                           value: 'none',
                           label: '🚫 Không Thêm Link (Video & Bài viết hoàn toàn sạch 100%, không chèn link)'
-                        },
-                        {
-                          value: 'delayed_2step',
-                          label: '⚡ Tương tác thông minh 2 bước (Mồi YES sau 60p -> Reply Link sau 15p)'
-                        },
-                        {
-                          value: 'immediate',
-                          label: '🚀 Gắn Link ngay khi xuất bản (Cổ điển)'
                         }
                       ]}
                     />
                   </div>
+
+                  {/** Tùy chọn cho chế độ Gắn link ngay khi xuất bản */}
+                  {linkMode === 'immediate' && (
+                    <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in duration-150">
+                      <div>
+                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
+                          Vị trí gắn Link điều hướng
+                        </label>
+                        <CustomDropdown
+                          value={linkTargetPosition}
+                          onChange={v => setLinkTargetPosition(v)}
+                          options={[
+                            { value: 'comment', label: '💬 Bình luận (1 đoạn comment mồi ngắn gọn kèm link bài viết - Chuẩn nhất)' },
+                            { value: 'caption', label: '📝 Chèn trực tiếp vào Caption mô tả video' },
+                            { value: 'both', label: '🔥 Cả Bình luận & Caption' }
+                          ]}
+                        />
+                      </div>
+
+                      <div className="bg-blue-950/30 p-3 rounded-xl border border-blue-500/20 text-[11px] text-blue-200/90 leading-relaxed flex items-start gap-2.5">
+                        <span className="material-symbols-outlined text-blue-400 text-[18px] mt-0.5 shrink-0">task_alt</span>
+                        <div>
+                          <strong className="text-blue-300 block mb-0.5 font-bold">Quy trình Đăng tay & Điều hướng một chạm:</strong>
+                          <span>Mỗi video Reel sau khi hoàn thiện sẽ được tự động chuẩn bị sẵn:</span>
+                          <ul className="list-disc list-inside mt-1 space-y-0.5 text-slate-300">
+                            <li><b>Caption sạch:</b> Tiêu đề hoa + Hook Part 1 + câu kêu gọi xem bình luận.</li>
+                            <li><b>Bình luận mồi:</b> 1 đoạn ngắn gọn kích thích tò mò kèm đường link bài viết website.</li>
+                          </ul>
+                          <span className="mt-1 block text-slate-400">Bạn chỉ cần bấm <b>Copy Caption</b> và <b>Copy Comment & Link</b> để đăng ngay mà không mất thời gian soạn thảo.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/** Tùy chọn cho chế độ Không thêm link */}
                   {linkMode === 'none' && (
@@ -1090,153 +1115,7 @@ export default function FacebookPageSettings() {
                       <span className="material-symbols-outlined text-emerald-400 text-[18px] mt-0.5 shrink-0">verified_user</span>
                       <div>
                         <strong className="text-emerald-300 block mb-0.5 font-bold">Chế độ không thêm link (100% Clean Video):</strong>
-                        <span>Hệ thống sẽ <b>hoàn toàn không chèn bất kỳ đường link nào</b> vào Mô tả (Caption) hay Bình luận (Comment). Bài viết sẽ được xuất bản thuần túy như nhà sáng tạo nội dung tự nhiên để tối ưu hóa phân phối Reach và tăng trưởng lượt theo dõi.</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/** Tùy chọn cho chế độ View Threshold */}
-                  {linkMode === 'view_threshold' && (
-                    <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in duration-150">
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-[10px] font-bold text-fb-text-muted uppercase">
-                            Ngưỡng lượt xem kích hoạt (Views Threshold)
-                          </label>
-                          <span className="text-[11px] text-cyan-400 font-black">
-                            {Number(linkViewThreshold).toLocaleString()} views
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min="100"
-                            step="100"
-                            value={linkViewThreshold}
-                            onChange={e => setLinkViewThreshold(Math.max(100, parseInt(e.target.value, 10) || 100))}
-                            className="w-full bg-fb-surface border border-fb-surface-hover/80 rounded-lg px-3 py-1.5 text-xs text-fb-text font-bold focus:border-fb-blue focus:outline-none"
-                            placeholder="Nhập số view..."
-                          />
-                        </div>
-                        {/** Quick Select Badges */}
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {[500, 1000, 2000, 5000, 10000].map(v => (
-                            <button
-                              key={v}
-                              type="button"
-                              onClick={() => setLinkViewThreshold(v)}
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all ${
-                                linkViewThreshold === v
-                                  ? 'bg-fb-blue text-white border-fb-blue shadow-xs'
-                                  : 'bg-black/20 hover:bg-black/30 text-fb-text-muted border-white/5'
-                              }`}
-                            >
-                              {v.toLocaleString()} views
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
-                            Vị trí gắn Link
-                          </label>
-                          <CustomDropdown
-                            value={linkTargetPosition}
-                            onChange={v => setLinkTargetPosition(v)}
-                            options={[
-                              { value: 'comment', label: '💬 Tự động gắn link vào Bình luận (Comment - An toàn nhất)' },
-                              { value: 'caption', label: '📝 Tự động sửa thêm link vào Mô tả video (Caption)' },
-                              { value: 'both', label: '🔥 Cả Bình luận & Mô tả video' }
-                            ]}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
-                            Thời gian Fallback (Dự phòng)
-                          </label>
-                          <CustomDropdown
-                            value={linkFallbackHours}
-                            onChange={v => setLinkFallbackHours(Number(v))}
-                            options={[
-                              { value: 12, label: 'Sau 12 giờ nếu chưa đủ view' },
-                              { value: 24, label: 'Sau 24 giờ nếu chưa đủ view (Chuẩn)' },
-                              { value: 48, label: 'Sau 48 giờ nếu chưa đủ view' },
-                              { value: 0, label: 'Không giới hạn (Chỉ gắn khi đủ view)' }
-                            ]}
-                          />
-                        </div>
-                      </div>
-
-                      {linkFallbackHours > 0 && (
-                        <div>
-                          <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
-                            Hành động khi hết thời gian Fallback
-                          </label>
-                          <CustomDropdown
-                            value={linkFallbackAction}
-                            onChange={v => setLinkFallbackAction(v)}
-                            options={[
-                              { value: 'inject', label: '⚡ Tự động gắn link (Đảm bảo bài luôn có link điều hướng)' },
-                              { value: 'skip', label: '🛡️ Bỏ qua, không gắn link (Giữ video sạch 100%)' }
-                            ]}
-                          />
-                        </div>
-                      )}
-
-                      <div className="bg-black/20 p-2.5 rounded-xl border border-white/5 text-[11px] text-fb-text-muted leading-relaxed flex items-start gap-2">
-                        <span className="material-symbols-outlined text-cyan-400 text-[16px] mt-0.5 shrink-0">insights</span>
-                        <div>
-                          <strong className="text-fb-text block">Chiến lược tối ưu Reach của Facebook:</strong>
-                          <span>Khi vừa đăng, video hoàn toàn sạch không có link để thuật toán Meta thoải mái cắn đề xuất. Khi view chạm mốc <b>{Number(linkViewThreshold).toLocaleString()}</b>, hệ thống sẽ tự động gắn link vào <b>{linkTargetPosition === 'comment' ? 'Bình luận' : linkTargetPosition === 'caption' ? 'Mô tả video' : 'Bình luận & Mô tả'}</b>!</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/** Tùy chọn cho chế độ 2 bước */}
-                  {linkMode === 'delayed_2step' && (
-                    <div className="space-y-2 text-[11px] text-fb-text-muted leading-relaxed animate-in fade-in duration-150">
-                      <div className="flex items-start gap-2 bg-black/20 p-2.5 rounded-xl border border-white/5">
-                        <span className="material-symbols-outlined text-cyan-400 text-[16px] mt-0.5 shrink-0">check_circle</span>
-                        <div>
-                          <strong className="text-fb-text block">Caption sạch — Tránh bị Facebook bóp tương tác:</strong>
-                          <span>Không chèn link trực tiếp vào Caption. Hệ thống tự động gắn câu kết chuẩn: <code>...FULL STORY IN THE COMMENT 👇👇👇</code></span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-2 bg-black/20 p-2.5 rounded-xl border border-white/5">
-                        <span className="material-symbols-outlined text-emerald-400 text-[16px] mt-0.5 shrink-0">mark_chat_read</span>
-                        <div>
-                          <strong className="text-fb-text block">Quy trình Bình luận 2 bước tối ưu Reach:</strong>
-                          <span><strong>Sau 60 phút:</strong> Tự động thả bình luận mồi câu "YES" kích hoạt thuật toán; <strong>Sau 15 phút tiếp theo:</strong> Tự động reply vào bình luận mồi kèm Part 2 và link website WordPress.</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/** Tùy chọn cho chế độ Immediate */}
-                  {linkMode === 'immediate' && (
-                    <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in duration-150">
-                      <div>
-                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
-                          Vị trí gắn Link ngay khi đăng
-                        </label>
-                        <CustomDropdown
-                          value={linkTargetPosition}
-                          onChange={v => setLinkTargetPosition(v)}
-                          options={[
-                            { value: 'comment', label: '💬 Bình luận (Đăng comment kèm link ngay sau khi video lên)' },
-                            { value: 'caption', label: '📝 Chèn trực tiếp vào Caption mô tả video' },
-                            { value: 'both', label: '🔥 Cả Bình luận & Caption' }
-                          ]}
-                        />
-                      </div>
-                      <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20 text-[11px] text-amber-200/90 leading-relaxed flex items-start gap-2">
-                        <span className="material-symbols-outlined text-amber-400 text-[16px] mt-0.5 shrink-0">warning</span>
-                        <span><b>Lưu ý:</b> Gắn link ngay khi xuất bản có thể khiến Facebook hạn chế mức độ phân phối ban đầu của Video Reel. Nếu muốn tối đa hóa lượt xem, hãy chọn chế độ <b>Gắn link theo Lượt xem</b> hoặc <b>Tương tác 2 bước</b>.</span>
+                        <span>Hệ thống sẽ hoàn toàn không tạo link điều hướng trong Bình luận hay Caption. Bài viết giữ nguyên trạng thái nguyên bản để tối ưu đề xuất tự nhiên.</span>
                       </div>
                     </div>
                   )}

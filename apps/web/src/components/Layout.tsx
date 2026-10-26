@@ -69,8 +69,6 @@ export default function Layout() {
     let navItems = [
         { to: '/', icon: 'dashboard', label: 'Dashboard' },
         { to: '/facebook', icon: 'qr_code_2', label: 'Facebook Pages', hasSubmenu: true },
-        { to: '/facebook/business-hub', icon: 'domain', label: 'Quản Lý BM & App' },
-        { to: '/meta-bm-guide', icon: 'menu_book', label: 'HD Tạo Token BM' },
         { to: '/crawl-sources', icon: 'language', label: 'Website' },
         { to: '/ai-factory', icon: 'auto_awesome', label: 'AI Factory' },
         { to: '/reel-templates', icon: 'style', label: 'Kho Giao Diện Reel' },

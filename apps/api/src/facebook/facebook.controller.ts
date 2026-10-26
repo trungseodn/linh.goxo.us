@@ -33,6 +33,31 @@ export class ZTTeamFacebookController {
     return this.facebookService.ztteam_fetchPages(fbAccountId, req.user.sub);
   }
 
+  @Post('pages/verify-token')
+  ztteam_verifyToken(@Body() body: { token: string }) {
+    return this.facebookService.ztteam_verifyPageToken(body.token);
+  }
+
+  @Post('pages/manual-add')
+  ztteam_manualAddPage(@Body() body: { pageId?: string; name?: string; token?: string; url?: string; pageUrl?: string; avatar?: string; category?: string }, @Request() req: any) {
+    return this.facebookService.ztteam_manualAddPage(req.user.sub, body);
+  }
+
+  @Post('pages/manual-bulk-add')
+  ztteam_manualBulkAddPages(@Body() body: { rawText?: string; pages?: any[] }, @Request() req: any) {
+    return this.facebookService.ztteam_manualBulkAddPages(req.user.sub, body);
+  }
+
+  @Post('pages/:pageId/refresh-avatar')
+  ztteam_refreshPageAvatar(@Param('pageId') pageId: string) {
+    return this.facebookService.ztteam_refreshPageAvatar(pageId);
+  }
+
+  @Post('pages/refresh-all-avatars')
+  ztteam_refreshAllPageAvatars() {
+    return this.facebookService.ztteam_refreshAllPageAvatars();
+  }
+
   @Get('pages')
   ztteam_getPages(@Request() req: any) {
     return this.facebookService.ztteam_getConnectedPages(req.user.sub);

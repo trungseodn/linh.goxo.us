@@ -46,8 +46,8 @@ function App() {
         >
           <Route index element={<Overview />} />
           <Route path="facebook" element={<FacebookPages />} />
-          <Route path="facebook/business-hub" element={<MetaBusinessHub />} />
-          <Route path="meta-bm-guide" element={<MetaBMGuidePage />} />
+          <Route path="facebook/business-hub" element={<Navigate to="/facebook" replace />} />
+          <Route path="meta-bm-guide" element={<Navigate to="/facebook" replace />} />
           <Route path="facebook/pages/:id/settings" element={<FacebookPageSettings />} />
           <Route path="facebook/pages/:id/report" element={<FanpageReport />} />
           <Route path="crawl-sources" element={<CrawlSources />} />

@@ -285,8 +285,8 @@ export class ZTTeamFetcherService {
     }
 
     /** 3. Kiểm tra số câu hoàn chỉnh */
-    const sentenceCount = (trimmedContent.match(/[.!?](\s+|$)/g) || []).length;
-    if (sentenceCount < 2) {
+    const sentenceCount = (trimmedContent.match(/[.!?](\s+|$|[A-Z])/g) || []).length;
+    if (sentenceCount < 2 && trimmedContent.length < 500) {
       return { isValid: false, reason: `Nội dung không đủ câu hoàn chỉnh (${sentenceCount} câu < 2)` };
     }
 
@@ -626,7 +626,8 @@ export class ZTTeamFetcherService {
       if (customContentEl) {
         const clone = customContentEl.clone();
         clone.find('script, style, noscript, iframe, svg, nav, header, footer, .sharedaddy, .ads, [data-widget-id], .comment-respond, .post-meta, .entry-meta, .author-box, .breadcrumbs, .social-share').remove();
-        content = clone.text().replace(/\t/g, ' ').replace(/[ ]{2,}/g, ' ').replace(/\. ([A-Z])/g, '.\n\n$1').trim();
+        clone.find('p, br, div, h1, h2, h3, h4, h5, h6').after('\n\n');
+        content = clone.text().replace(/\t/g, ' ').replace(/[ ]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
       }
       content = this.ztteam_cleanStoryContent(content);
 

@@ -2,7 +2,14 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 export function ztteam_getStorageRoot(): string {
-  return process.env.STORAGE_PATH || path.join(process.cwd(), 'storage');
+  if (process.env.STORAGE_PATH) {
+    return process.env.STORAGE_PATH;
+  }
+  const current = process.cwd();
+  if (fs.existsSync(path.join(current, 'apps', 'api', 'storage'))) {
+    return path.join(current, 'apps', 'api', 'storage');
+  }
+  return path.join(current, 'storage');
 }
 
 export function ztteam_getReelsPath(...subpaths: string[]): string {
@@ -33,6 +40,10 @@ export function ztteam_getBgmPath(...subpaths: string[]): string {
   return path.join(ztteam_getStorageRoot(), 'bgm', ...subpaths);
 }
 
+export function ztteam_getAvatarsPath(...subpaths: string[]): string {
+  return path.join(ztteam_getStorageRoot(), 'avatars', ...subpaths);
+}
+
 export function ztteam_ensureStorageDirs(): void {
   const root = ztteam_getStorageRoot();
   const dirs = [
@@ -44,6 +55,7 @@ export function ztteam_ensureStorageDirs(): void {
     path.join(root, 'youtube'),
     path.join(root, 'videos'),
     path.join(root, 'bgm'),
+    path.join(root, 'avatars'),
   ];
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) {

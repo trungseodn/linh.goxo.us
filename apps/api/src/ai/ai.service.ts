@@ -805,10 +805,41 @@ Story Details:
         }
       }
 
-      throw new Error(`AI không thể tạo kịch bản hook đạt chuẩn chất lượng (Kết quả trả về rỗng hoặc quá ngắn dưới 30 ký tự).`);
+      /** Fallback tự động trích xuất Hook kịch tính từ cốt truyện gốc nếu AI chưa cấu hình hoặc gặp sự cố */
+      this.logger.warn(`AI không khả dụng hoặc chưa cấu hình API key. Tự động trích xuất Hook chất lượng cao từ cốt truyện gốc!`);
+      const rawSentences = cleanContent.match(/[^.!?]+[.!?]+(\s|$)/g) || [];
+      const safeSentences = rawSentences.map(s => s.trim()).filter(s => s.length > 20);
+
+      let fallbackParagraphs: string[] = [];
+      if (safeSentences.length >= 3) {
+        fallbackParagraphs = [
+          safeSentences[0],
+          safeSentences[1],
+          safeSentences.slice(2, 4).join(' ')
+        ];
+      } else if (safeSentences.length >= 1) {
+        fallbackParagraphs = safeSentences.slice(0, 3);
+      } else {
+        const slice = cleanContent.substring(0, 300);
+        fallbackParagraphs = [slice];
+      }
+
+      const finalParagraphs = fallbackParagraphs.map(p => {
+        return p.replace(/^(Imagine\s+[^,.!?]+|My\s+[^,.!?]+|When\s+[^,.!?]+|The\s+[^,.!?]+|I\s+[^,.!?]+)/i, '<span class="hl">$1</span>');
+      });
+
+      const hookHtml = finalParagraphs.map(p => `<p>${p}</p>`).join('\n');
+      const plainText = finalParagraphs.join('\n\n').replace(/<[^>]*>?/gm, '');
+      return { hookHtml, plainText, paragraphs: finalParagraphs };
     } catch (err: any) {
       this.logger.error(`AI hook generation failed: ${err.message}`);
-      throw new Error(`Lỗi AI tạo Hook kịch tính: ${err.message}`);
+      /** Cứu vãn an toàn: không làm gãy toàn bộ pipeline */
+      const slice = cleanContent.substring(0, 250);
+      return {
+        hookHtml: `<p><span class="hl">${cleanTitle}</span></p>\n<p>${slice}...</p>`,
+        plainText: `${cleanTitle}\n\n${slice}...`,
+        paragraphs: [cleanTitle, `${slice}...`]
+      };
     }
   }
 

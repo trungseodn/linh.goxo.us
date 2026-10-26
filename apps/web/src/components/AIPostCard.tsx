@@ -96,22 +96,15 @@ export default function ZTTeamAIPostCard({
     }
   };
 
-  const dynamicHookText = ztteam_getHookTextForPost(item.id);
+  const fullCommentText =
+    (item.ai_first_comment && item.ai_first_comment.trim()) ||
+    (item.wp_post_url ? `👉 FULL STORY HERE 👇👇👇\n${item.wp_post_url}` : 'Chưa có link bài viết');
 
-  const ztteam_handleCopyComment1 = (e: React.MouseEvent) => {
+  const ztteam_handleCopyComment = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(dynamicHookText);
-      ztteam_showToast('Đã sao chép Bình luận mồi kích hoạt!', 'success');
-    }
-  };
-
-  const ztteam_handleCopyComment2 = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const comment2Text = item.ai_first_comment || `👉 FULL STORY HERE 👇👇👇\n${item.wp_post_url || ''}`;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(comment2Text);
-      ztteam_showToast('Đã sao chép Bình luận link Part 2!', 'success');
+      navigator.clipboard.writeText(fullCommentText);
+      ztteam_showToast('Đã sao chép Bình luận & Link Website!', 'success');
     }
   };
 
@@ -540,97 +533,28 @@ export default function ZTTeamAIPostCard({
         </div>
       </div>
 
-      {/** 6. Two-Step Delayed Comment Preview (Mô phỏng 2 tầng bình luận Facebook) */}
-      <div className="mx-4 mb-3 p-3 bg-fb-surface-hover/80 rounded-xl border border-white/5 space-y-3">
-        {/** Tầng 1: Bình luận mồi YES (T = 60 phút) */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-fb-text">
-            <div className="flex items-center gap-1.5 text-blue-400">
-              <span className="material-symbols-outlined text-[14px]">bolt</span>
-              <span>Bình luận 1: Mồi kích hoạt (Sau 1h)</span>
-              <button
-                type="button"
-                onClick={ztteam_handleCopyComment1}
-                className="text-[10px] font-bold text-blue-300 hover:text-white flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-500/20 hover:bg-blue-500/30 rounded border border-blue-500/30 transition-colors cursor-pointer ml-1"
-                title="Sao chép bình luận mồi"
-              >
-                <span className="material-symbols-outlined text-[12px]">content_copy</span>
-                <span>Copy</span>
-              </button>
-            </div>
-
-            {isAlreadyPosted ? (
-              item.comment_step >= 1 ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[12px]">check</span>
-                  Đã thả mồi
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[12px]">hourglass_top</span>
-                  Chờ đủ 1h
-                </span>
-              )
-            ) : (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-fb-text-muted border border-white/10 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[12px]">schedule</span>
-                Tự động sau 1h
-              </span>
-            )}
+      {/** 6. Bình luận điều hướng: Gắn link ngay khi xuất bản (Dành cho Đăng tay) */}
+      <div className="mx-4 mb-3 p-3 bg-fb-surface-hover/80 rounded-xl border border-white/5 space-y-2">
+        <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-fb-text">
+          <div className="flex items-center gap-1.5 text-cyan-400">
+            <span className="material-symbols-outlined text-[15px]">add_comment</span>
+            <span>Bình luận điều hướng (Gắn link ngay khi đăng)</span>
           </div>
 
-          <p className="text-[11px] text-blue-200/90 bg-blue-950/40 p-2 rounded-lg border border-blue-500/20 select-all leading-relaxed italic">
-            {dynamicHookText}
-          </p>
+          <button
+            type="button"
+            onClick={ztteam_handleCopyComment}
+            className="text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-500 flex items-center gap-1 px-2.5 py-1 rounded-lg shadow-sm transition-all cursor-pointer"
+            title="Sao chép toàn bộ bình luận và link để dán ngay sau khi đăng bài"
+          >
+            <span className="material-symbols-outlined text-[13px]">content_copy</span>
+            <span>Copy Comment & Link</span>
+          </button>
         </div>
 
-        {/** Tầng 2: Bình luận lồng nhau Reply Part 2 & Link (Sau 5h) */}
-        <div className="ml-3 pl-2.5 border-l-2 border-blue-500/30 space-y-1.5">
-          <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-fb-text">
-            <div className="flex items-center gap-1 text-cyan-400">
-              <span className="material-symbols-outlined text-[14px]">reply</span>
-              <span>Bình luận 2: Trả lời Part 2 & Link</span>
-              <button
-                type="button"
-                onClick={ztteam_handleCopyComment2}
-                className="text-[10px] font-bold text-cyan-300 hover:text-white flex items-center gap-0.5 px-1.5 py-0.5 bg-cyan-500/20 hover:bg-cyan-500/30 rounded border border-cyan-500/30 transition-colors cursor-pointer ml-1"
-                title="Sao chép bình luận Part 2 & link"
-              >
-                <span className="material-symbols-outlined text-[12px]">content_copy</span>
-                <span>Copy</span>
-              </button>
-            </div>
-
-            {isAlreadyPosted ? (
-              item.comment_step === 2 ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[12px]">done_all</span>
-                  Đã trả lời
-                </span>
-              ) : item.comment_step === 1 ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
-                  Chờ 5h
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-fb-text-muted border border-white/10 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[12px]">hourglass_empty</span>
-                  Chờ bước 1
-                </span>
-              )
-            ) : (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-fb-text-muted border border-white/10 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[12px]">schedule</span>
-                Tự động sau 5h
-              </span>
-            )}
-          </div>
-
-          <p className="text-[11px] text-fb-text-muted line-clamp-4 whitespace-pre-line select-all leading-relaxed bg-black/30 p-2 rounded-lg border border-white/5 font-mono">
-            {item.ai_first_comment ||
-              `👉 FULL STORY HERE 👇👇👇\n${item.wp_post_url || 'https://thieponline.store'}`}
-          </p>
-        </div>
+        <p className="text-[11px] text-fb-text-muted line-clamp-4 whitespace-pre-line select-all leading-relaxed bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono">
+          {fullCommentText}
+        </p>
       </div>
 
       {/** 7. Actions Footer Bar */}

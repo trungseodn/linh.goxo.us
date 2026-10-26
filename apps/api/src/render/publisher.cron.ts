@@ -400,10 +400,17 @@ export class ZTTeamPublisherCron {
             '🔗 Learn more at:'
           ];
           const commentPrefix = commentPrefixes[Math.floor(Math.random() * commentPrefixes.length)];
+          const shortExcerpt = reel.ai_caption
+            ? reel.ai_caption.split('\n')[0].slice(0, 150)
+            : reel.wp_post_title || '';
+          const commentText = shortExcerpt
+            ? `${commentPrefix}\n${shortExcerpt}\n\n👉 Read full story here 👇👇👇\n${trackingLink}`
+            : `${commentPrefix} ${trackingLink}`;
+
           await this.facebookService.ztteam_publishComment(
             page.fb_page_id,
             response.id,
-            `${commentPrefix} ${trackingLink}`
+            commentText
           );
         } catch (e: any) {
           this.logger.error(`Failed to post comment for reel ${reel.id}: ${e.message}`);
@@ -602,10 +609,19 @@ export class ZTTeamPublisherCron {
             '🔗 Learn more at:'
           ];
           const commentPrefix = commentPrefixes[Math.floor(Math.random() * commentPrefixes.length)];
+          let commentText = `${commentPrefix} ${trackingLink}`;
+          if (image.ai_first_comment) {
+            commentText = image.ai_first_comment.includes('http')
+              ? image.ai_first_comment
+              : `${image.ai_first_comment}\n\n👉 Full story here 👇👇👇\n${trackingLink}`;
+          } else if (image.wp_post_title) {
+            commentText = `${commentPrefix}\n${image.wp_post_title}\n\n👉 Full story here 👇👇👇\n${trackingLink}`;
+          }
+
           await this.facebookService.ztteam_publishComment(
             page.fb_page_id,
             fbPostId,
-            `${commentPrefix} ${trackingLink}`
+            commentText
           );
         } catch (e: any) {
           this.logger.error(`Failed to post immediate comment for image ${image.id}: ${e.message}`);

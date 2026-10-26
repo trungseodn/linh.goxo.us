@@ -72,24 +72,107 @@ export class ZTTeamWordpressService {
     }
   }
 
+  /**
+   * Helper thực hiện request đến WordPress REST API với cơ chế tự động fallback giữa /wp-json và ?rest_route=
+   * Giúp hệ thống hoạt động 100% trên mọi cấu hình WordPress (cả Plain Permalinks lẫn Pretty Permalinks)
+   */
+  async ztteam_wpRequest(
+    wpUrl: string,
+    endpoint: string,
+    method: 'GET' | 'POST' | 'DELETE' = 'GET',
+    options: {
+      headers?: Record<string, any>;
+      params?: Record<string, any>;
+      data?: any;
+      timeout?: number;
+    } = {}
+  ): Promise<any> {
+    const cleanUrl = wpUrl.replace(/\/$/, '');
+    const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const timeout = options.timeout || 20000;
+
+    const isValidJsonResponse = (data: any) => {
+      if (data === null || data === undefined) return false;
+      if (typeof data === 'string') {
+        const trimmed = data.trim();
+        return (trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'));
+      }
+      return typeof data === 'object';
+    };
+
+    /** Cách 1: Thử qua endpoint Pretty Permalinks: /wp-json/... */
+    let primaryError: any = null;
+    try {
+      const fullUrl = `${cleanUrl}/wp-json${cleanPath}`;
+      let res;
+      if (method === 'GET') {
+        res = await firstValueFrom(this.httpService.get(fullUrl, { headers: options.headers, params: options.params, timeout }));
+      } else if (method === 'POST') {
+        res = await firstValueFrom(this.httpService.post(fullUrl, options.data, { headers: options.headers, params: options.params, timeout }));
+      } else if (method === 'DELETE') {
+        res = await firstValueFrom(this.httpService.delete(fullUrl, { headers: options.headers, params: options.params, timeout }));
+      }
+
+      if (res && isValidJsonResponse(res.data)) {
+        return res;
+      }
+      this.logger.debug(`[WordPress API] /wp-json returned non-JSON HTML for ${cleanPath}, falling back to ?rest_route=`);
+    } catch (err: any) {
+      primaryError = err;
+      if (err.response?.status === 401 && err.response?.data?.code === 'rest_not_logged_in') {
+        throw err;
+      }
+    }
+
+    /** Cách 2: Fallback sang WordPress Core Route: ?rest_route=... (hoạt động trên 100% host) */
+    try {
+      const routeUrl = `${cleanUrl}/`;
+      const combinedParams = { rest_route: cleanPath, ...(options.params || {}) };
+      let res;
+      if (method === 'GET') {
+        res = await firstValueFrom(this.httpService.get(routeUrl, { headers: options.headers, params: combinedParams, timeout }));
+      } else if (method === 'POST') {
+        res = await firstValueFrom(this.httpService.post(routeUrl, options.data, { headers: options.headers, params: combinedParams, timeout }));
+      } else if (method === 'DELETE') {
+        try {
+          res = await firstValueFrom(this.httpService.delete(routeUrl, { headers: options.headers, params: combinedParams, timeout }));
+        } catch (delErr: any) {
+          if (delErr.response?.status === 405) {
+            res = await firstValueFrom(this.httpService.post(routeUrl, {}, {
+              headers: { ...(options.headers || {}), 'X-HTTP-Method-Override': 'DELETE' },
+              params: combinedParams,
+              timeout
+            }));
+          } else {
+            throw delErr;
+          }
+        }
+      }
+
+      if (res && isValidJsonResponse(res.data)) {
+        return res;
+      }
+      throw new Error(`WordPress API returned HTML instead of JSON for ${cleanPath}`);
+    } catch (fallbackErr: any) {
+      throw fallbackErr || primaryError;
+    }
+  }
+
   async ztteam_testConnection(wpUrl: string, wpUsername: string, wpAppPassword: string) {
     try {
       const cleanUrl = wpUrl.replace(/\/$/, '');
       const authHeader = 'Basic ' + Buffer.from(`${wpUsername}:${wpAppPassword}`).toString('base64');
 
-      const response = await firstValueFrom(
-        this.httpService.get(`${cleanUrl}/wp-json/wp/v2/users/me`, {
-          headers: {
-            Authorization: authHeader,
-          },
-        })
-      );
+      const response = await this.ztteam_wpRequest(cleanUrl, '/wp/v2/users/me', 'GET', {
+        headers: { Authorization: authHeader },
+        timeout: 10000,
+      });
 
       return { success: true, data: { id: response.data.id, name: response.data.name } };
     } catch (error: any) {
       this.logger.error('WordPress connection test failed', error.response?.data || error.message);
       throw new HttpException(
-        error.response?.data?.message || 'Failed to connect to WordPress',
+        error.response?.data?.message || error.message || 'Failed to connect to WordPress',
         HttpStatus.BAD_REQUEST
       );
     }
@@ -201,21 +284,21 @@ export class ZTTeamWordpressService {
     mimeType: string
   ): Promise<{ id: number; source_url: string }> {
     try {
-      const response = await firstValueFrom(
-        this.httpService.post(`${wpUrl}/wp-json/wp/v2/media`, buffer, {
-          headers: {
-            Authorization: authHeader,
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Type': mimeType
-          }
-        })
-      );
+      const response = await this.ztteam_wpRequest(wpUrl, '/wp/v2/media', 'POST', {
+        headers: {
+          Authorization: authHeader,
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Type': mimeType
+        },
+        data: buffer,
+        timeout: 30000
+      });
       return {
         id: response.data.id,
         source_url: response.data.source_url
       };
     } catch (error: any) {
-      this.logger.error(`Failed to upload media to WordPress at ${wpUrl}/wp-json/wp/v2/media`, error.response?.data || error.message);
+      this.logger.error(`Failed to upload media to WordPress at ${wpUrl}`, error.response?.data || error.message);
       throw error;
     }
   }
@@ -226,11 +309,10 @@ export class ZTTeamWordpressService {
     mediaId: number
   ): Promise<boolean> {
     try {
-      await firstValueFrom(
-        this.httpService.delete(`${wpUrl}/wp-json/wp/v2/media/${mediaId}?force=true`, {
-          headers: { Authorization: authHeader }
-        })
-      );
+      await this.ztteam_wpRequest(wpUrl, `/wp/v2/media/${mediaId}`, 'DELETE', {
+        headers: { Authorization: authHeader },
+        params: { force: 'true' }
+      });
       this.logger.log(`Successfully deleted media #${mediaId} on WP`);
       return true;
     } catch (err: any) {
@@ -246,18 +328,13 @@ export class ZTTeamWordpressService {
     featuredMediaId: number
   ): Promise<boolean> {
     try {
-      await firstValueFrom(
-        this.httpService.post(
-          `${wpUrl}/wp-json/wp/v2/posts/${postId}`,
-          { featured_media: featuredMediaId },
-          {
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json'
-            }
-          }
-        )
-      );
+      await this.ztteam_wpRequest(wpUrl, `/wp/v2/posts/${postId}`, 'POST', {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json'
+        },
+        data: { featured_media: featuredMediaId }
+      });
       this.logger.log(`Successfully updated WP post #${postId} with featured_media #${featuredMediaId}`);
       return true;
     } catch (err: any) {
@@ -272,11 +349,10 @@ export class ZTTeamWordpressService {
     postId: string | number
   ): Promise<boolean> {
     try {
-      await firstValueFrom(
-        this.httpService.delete(`${wpUrl}/wp-json/wp/v2/posts/${postId}?force=true`, {
-          headers: { Authorization: authHeader }
-        })
-      );
+      await this.ztteam_wpRequest(wpUrl, `/wp/v2/posts/${postId}`, 'DELETE', {
+        headers: { Authorization: authHeader },
+        params: { force: 'true' }
+      });
       this.logger.log(`Successfully deleted WP post #${postId}`);
       return true;
     } catch (err: any) {
@@ -371,44 +447,37 @@ export class ZTTeamWordpressService {
       }
 
       /** 1. Check if post with same title already exists */
-      const searchResponse = await firstValueFrom(
-        this.httpService.get(`${cleanUrl}/wp-json/wp/v2/posts`, {
+      let existingPost: any = null;
+      try {
+        const searchResponse = await this.ztteam_wpRequest(cleanUrl, '/wp/v2/posts', 'GET', {
           headers: { Authorization: authHeader },
-          params: { search: data.title, status: 'any' }
-        })
-      );
+          params: { search: data.title }
+        });
+        const postsList = Array.isArray(searchResponse?.data) ? searchResponse.data : [];
+        existingPost = postsList.find((p: any) => p?.title?.rendered === data.title || p?.title?.raw === data.title);
+      } catch (searchErr: any) {
+        this.logger.warn(`Could not verify existing post on WP (${searchErr.message}). Proceeding with post creation.`);
+      }
 
-      const existingPost = searchResponse.data.find((p: any) => p.title.rendered === data.title || p.title.raw === data.title);
-
-      let response;
-      if (existingPost) {
+      let response: any;
+      if (existingPost && existingPost.id) {
         /** Update existing post */
-        response = await firstValueFrom(
-          this.httpService.post(
-            `${cleanUrl}/wp-json/wp/v2/posts/${existingPost.id}`,
-            payload,
-            {
-              headers: {
-                Authorization: authHeader,
-                'Content-Type': 'application/json'
-              },
-            }
-          )
-        );
+        response = await this.ztteam_wpRequest(cleanUrl, `/wp/v2/posts/${existingPost.id}`, 'POST', {
+          headers: {
+            Authorization: authHeader,
+            'Content-Type': 'application/json'
+          },
+          data: payload
+        });
       } else {
         /** Create new post */
-        response = await firstValueFrom(
-          this.httpService.post(
-            `${cleanUrl}/wp-json/wp/v2/posts`,
-            payload,
-            {
-              headers: {
-                Authorization: authHeader,
-                'Content-Type': 'application/json'
-              },
-            }
-          )
-        );
+        response = await this.ztteam_wpRequest(cleanUrl, '/wp/v2/posts', 'POST', {
+          headers: {
+            Authorization: authHeader,
+            'Content-Type': 'application/json'
+          },
+          data: payload
+        });
       }
 
       return {
@@ -416,9 +485,9 @@ export class ZTTeamWordpressService {
         url: response.data.link
       };
     } catch (error: any) {
-      this.logger.error(`Failed to create post on WordPress at ${cleanUrl}/wp-json/wp/v2/posts`, error.response?.data || error.message);
+      this.logger.error(`Failed to create post on WordPress at ${cleanUrl}`, error.response?.data || error.message);
       throw new HttpException(
-        error.response?.data?.message || 'Failed to create post on WordPress',
+        error.response?.data?.message || error.message || 'Failed to create post on WordPress',
         HttpStatus.BAD_REQUEST
       );
     }
@@ -439,15 +508,14 @@ export class ZTTeamWordpressService {
     let wpUrl = site.wp_url.replace(/\/$/, '');
 
     try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${wpUrl}/wp-json/wp/v2/categories`, {
-          headers: { Authorization: authHeader },
-          params: { per_page: 100 },
-          timeout: 10000,
-        })
-      );
+      const response = await this.ztteam_wpRequest(wpUrl, '/wp/v2/categories', 'GET', {
+        headers: { Authorization: authHeader },
+        params: { per_page: 100 },
+        timeout: 10000,
+      });
 
-      return response.data.map((cat: any) => ({
+      const list = Array.isArray(response?.data) ? response.data : [];
+      return list.map((cat: any) => ({
         id: cat.id,
         name: cat.name,
         count: cat.count
@@ -473,15 +541,14 @@ export class ZTTeamWordpressService {
     let wpUrl = site.wp_url.replace(/\/$/, '');
 
     try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${wpUrl}/wp-json/wp/v2/tags`, {
-          headers: { Authorization: authHeader },
-          params: { per_page: 100 },
-          timeout: 10000,
-        })
-      );
+      const response = await this.ztteam_wpRequest(wpUrl, '/wp/v2/tags', 'GET', {
+        headers: { Authorization: authHeader },
+        params: { per_page: 100 },
+        timeout: 10000,
+      });
 
-      return response.data.map((tag: any) => ({
+      const list = Array.isArray(response?.data) ? response.data : [];
+      return list.map((tag: any) => ({
         id: tag.id,
         name: tag.name,
         count: tag.count
@@ -511,15 +578,14 @@ export class ZTTeamWordpressService {
       if (categoryId) params.categories = categoryId;
       if (targetTags) params.tags = targetTags;
 
-      const response = await firstValueFrom(
-        this.httpService.get(`${wpUrl}/wp-json/wp/v2/posts`, {
-          headers: { Authorization: authHeader },
-          params,
-          timeout: 12000,
-        })
-      );
+      const response = await this.ztteam_wpRequest(wpUrl, '/wp/v2/posts', 'GET', {
+        headers: { Authorization: authHeader },
+        params,
+        timeout: 12000,
+      });
 
-      return response.data.map((p: any) => {
+      const list = Array.isArray(response?.data) ? response.data : [];
+      return list.map((p: any) => {
         const rawContent = p.content?.rendered || p.title?.rendered || '';
         const cleanContent = rawContent.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').trim();
         const rawExcerpt = p.excerpt?.rendered || cleanContent.substring(0, 180);
@@ -572,16 +638,15 @@ export class ZTTeamWordpressService {
       if (categoryId) params.categories = categoryId;
       if (targetTags) params.tags = targetTags;
 
-      const response = await firstValueFrom(
-        this.httpService.get(`${wpUrl}/wp-json/wp/v2/posts`, {
-          headers: { Authorization: authHeader },
-          params,
-          timeout: 10000,
-        })
-      );
+      const response = await this.ztteam_wpRequest(wpUrl, '/wp/v2/posts', 'GET', {
+        headers: { Authorization: authHeader },
+        params,
+        timeout: 10000,
+      });
 
-      if (response.data && response.data.length > 0) {
-        const post = response.data[0];
+      const list = Array.isArray(response?.data) ? response.data : [];
+      if (list.length > 0) {
+        const post = list[0];
         /** Strip HTML from content */
         const rawContent = post.content?.rendered || post.title?.rendered || '';
         const cleanContent = rawContent.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').trim();

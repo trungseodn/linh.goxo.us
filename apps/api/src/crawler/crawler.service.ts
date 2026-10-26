@@ -282,8 +282,19 @@ export class ZTTeamCrawlerService {
         fanpageCaption += `\n\n👉 Read full story here: ${wpResult.url}`;
       }
 
+      /** Chuẩn hóa đoạn comment mồi ngắn gọn kèm link website để đăng tay */
+      let commentSnippet = part2 || '';
+      if (commentSnippet.length > 350) {
+        const slice = commentSnippet.substring(0, 350);
+        const lastP = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf('!'), slice.lastIndexOf('?'));
+        if (lastP > 100) {
+          commentSnippet = slice.substring(0, lastP + 1).trim();
+        } else {
+          commentSnippet = slice.trim() + '...';
+        }
+      }
       const commentCTA = `👉 FULL STORY HERE 👇👇👇\n${wpResult.url}`;
-      let firstCommentText: string | null = part2 ? `${part2}\n\n${commentCTA}` : commentCTA;
+      let firstCommentText: string | null = commentSnippet ? `${commentSnippet}\n\n${commentCTA}` : commentCTA;
 
       let imgRecord = await this.prisma.ztteam_images.findFirst({
         where: {
@@ -371,8 +382,19 @@ export class ZTTeamCrawlerService {
     if (targetPages.length === 0) {
       const captionCTA = '...FULL STORY IN THE COMMENT 👇👇👇';
       const fanpageCaption = `${titleUppercase}\n\n${part1}\n\n${captionCTA}`;
+      /** Chuẩn hóa đoạn comment mồi ngắn gọn kèm link website để đăng tay */
+      let commentSnippet = part2 || '';
+      if (commentSnippet.length > 350) {
+        const slice = commentSnippet.substring(0, 350);
+        const lastP = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf('!'), slice.lastIndexOf('?'));
+        if (lastP > 100) {
+          commentSnippet = slice.substring(0, lastP + 1).trim();
+        } else {
+          commentSnippet = slice.trim() + '...';
+        }
+      }
       const commentCTA = `👉 FULL STORY HERE 👇👇👇\n${wpResult.url}`;
-      const firstCommentText = part2 ? `${part2}\n\n${commentCTA}` : commentCTA;
+      const firstCommentText = commentSnippet ? `${commentSnippet}\n\n${commentCTA}` : commentCTA;
 
       let imgRecord = await this.prisma.ztteam_images.findFirst({
         where: {

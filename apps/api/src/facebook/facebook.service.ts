@@ -5,6 +5,11 @@ import { TelegramService } from '../telegram/telegram.service';
 import { ZTTeamAIService } from '../ai/ai.service';
 import { ZTTeamStoryTestService } from '../story-test/story-test.service';
 import { firstValueFrom } from 'rxjs';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as cheerio from 'cheerio';
+import axios from 'axios';
+import { ztteam_getAvatarsPath } from '../common/ztteam_storage.util';
 
 @Injectable()
 export class ZTTeamFacebookService {
@@ -3431,6 +3436,521 @@ export class ZTTeamFacebookService {
       successCount,
       failCount,
       results,
+    };
+  }
+
+  /**
+   * ZTTeam: Xác thực Page Access Token trực tiếp từ Graph API (Không qua BM / App)
+   */
+  async ztteam_verifyPageToken(token: string) {
+    if (!token || !token.trim()) {
+      throw new BadRequestException('Vui lòng cung cấp Page Access Token');
+    }
+    const cleanToken = token.trim();
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(`https://graph.facebook.com/${this.API_VERSION}/me`, {
+          params: {
+            access_token: cleanToken,
+            fields: 'id,name,picture.type(large),category,followers_count,fan_count',
+          },
+        })
+      );
+      const data = response.data;
+      if (!data || !data.id) {
+        throw new BadRequestException('Token không trả về Page ID hợp lệ từ Facebook Graph API');
+      }
+      return {
+        success: true,
+        id: String(data.id),
+        name: data.name || `Page ${data.id}`,
+        avatar: data.picture?.data?.url || `https://graph.facebook.com/${data.id}/picture?type=large`,
+        category: data.category || 'Fanpage',
+        followers_count: Number(data.followers_count || data.fan_count || 0),
+      };
+    } catch (err: any) {
+      const fbMsg = err.response?.data?.error?.message || err.message || 'Lỗi không xác định khi gọi Graph API';
+      throw new BadRequestException(`Xác thực Token Facebook thất bại: ${fbMsg}`);
+    }
+  }
+
+  /**
+   * ZTTeam: Lấy hoặc tạo tài khoản hệ thống cho các Page nhập thủ công
+   */
+  async ztteam_getOrCreateManualAccount(userId: string) {
+    let account = await this.prisma.ztteam_fb_accounts.findFirst({
+      where: {
+        owner_user_id: userId,
+        account_type: 'MANUAL',
+      },
+    });
+
+    if (!account) {
+      account = await this.prisma.ztteam_fb_accounts.create({
+        data: {
+          name: 'Thủ Công (Không qua BM/App)',
+          fb_user_id: `manual_${Date.now()}`,
+          account_type: 'MANUAL',
+          token_expiry: 'NEVER',
+          user_token_encrypted: 'MANUAL_HOLDER',
+          status: 'active',
+          owner_user_id: userId,
+        },
+      });
+    }
+    return account;
+  }
+
+  /**
+   * ZTTeam: Hàm tiện ích trích xuất Tên và ID/Slug sạch từ URL Fanpage Facebook
+   */
+  ztteam_extractFbPageInfo(urlOrInput: string): { slug: string; name: string; fullUrl: string } {
+    const clean = (urlOrInput || '').trim().replace(/\/+$/, '');
+    const fullUrl = clean.startsWith('http://') || clean.startsWith('https://') ? clean : `https://${clean}`;
+
+    try {
+      const u = new URL(fullUrl);
+      const idParam = u.searchParams.get('id');
+      if (idParam) {
+        return { slug: idParam, name: `Fanpage ${idParam}`, fullUrl };
+      }
+      const segments = u.pathname.split('/').filter(Boolean);
+      if (segments.length >= 3 && segments[0].toLowerCase() === 'people') {
+        const pageName = decodeURIComponent(segments[1]).replace(/[-_.]/g, ' ').trim();
+        const prettyName = pageName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return { slug: segments[2], name: prettyName || `Fanpage ${segments[2]}`, fullUrl };
+      }
+      if (segments.length >= 2 && segments[0].toLowerCase() === 'p') {
+        const pageName = decodeURIComponent(segments[1]).replace(/[-_.]/g, ' ').trim();
+        const prettyName = pageName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return { slug: segments[1], name: prettyName || `Fanpage ${segments[1]}`, fullUrl };
+      }
+      if (segments.length >= 1) {
+        const rawSlug = segments[segments.length - 1];
+        const pageName = decodeURIComponent(rawSlug).replace(/[-_.]/g, ' ').trim();
+        const prettyName = pageName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return { slug: rawSlug, name: prettyName || `Fanpage ${rawSlug}`, fullUrl };
+      }
+    } catch (e) {}
+
+    const fallback = clean.replace(/^https?:\/\/(www\.)?facebook\.com\/?/i, '').replace(/\/+$/, '').trim();
+    const pageName = decodeURIComponent(fallback).replace(/[-_.]/g, ' ').trim();
+    const prettyName = pageName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const finalSlug = fallback || `page_${Date.now()}`;
+    return {
+      slug: finalSlug,
+      name: prettyName || `Fanpage ${finalSlug}`,
+      fullUrl: fullUrl
+    };
+  }
+
+  /**
+   * ZTTeam: Thêm Fanpage thủ công độc lập bằng URL (Không cần quyền hay Token)
+   */
+  /**
+   * ZTTeam: Cào ảnh đại diện (Avatar) và Tên thật của Fanpage từ URL Facebook công khai
+   * Tải ảnh về lưu cục bộ trong /storage/avatars/ để đảm bảo hiển thị 100% không bị Facebook chặn/hết hạn
+   */
+  async ztteam_fetchAndSavePageAvatar(
+    rawUrl: string,
+    pageIdOrSlug: string,
+    fallbackName?: string
+  ): Promise<{ avatarUrl: string; scrapedName?: string; numericId?: string }> {
+    const cleanUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://') ? rawUrl : `https://${rawUrl}`;
+    const cleanId = (pageIdOrSlug || 'page').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    let ogImage = '';
+    let ogTitle = '';
+    let numericId = '';
+
+    const uas = [
+      'Twitterbot/1.0',
+      'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
+      'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+    ];
+
+    for (const ua of uas) {
+      try {
+        const res = await axios.get(cleanUrl, {
+          headers: {
+            'User-Agent': ua,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          timeout: 8000,
+          maxRedirects: 5,
+          validateStatus: (s) => s >= 200 && s < 400,
+        });
+
+        if (typeof res.data === 'string') {
+          const $ = cheerio.load(res.data);
+          const title = $('meta[property="og:title"]').attr('content') || $('meta[name="og:title"]').attr('content') || $('title').text() || '';
+          const image = $('meta[property="og:image"]').attr('content') || $('meta[name="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content') || '';
+
+          if (title && !ogTitle && !/^facebook$/i.test(title.trim()) && !/^error$/i.test(title.trim())) {
+            ogTitle = title.replace(/\s*\|\s*Facebook\s*$/i, '').replace(/\s*-\s*Home\s*$/i, '').trim();
+          }
+
+          if (image && !ogImage) {
+            ogImage = image;
+          }
+
+          const idMatch = res.data.match(/(?:entity_id|page_id|fb:\/\/page\/\?id=|(?:profile_id|delegate_page_id)["']?\s*:\s*["']?)(\d{6,})/i);
+          if (idMatch && idMatch[1] && !numericId) {
+            numericId = idMatch[1];
+          }
+
+          if (ogImage && ogTitle) break;
+        }
+      } catch (err: any) {
+        // Thử UA tiếp theo
+      }
+    }
+
+    // Nếu tìm thấy ogImage, tải ảnh về lưu ổ cứng cục bộ
+    if (ogImage && ogImage.startsWith('http')) {
+      try {
+        const avatarsDir = ztteam_getAvatarsPath();
+        if (!fs.existsSync(avatarsDir)) {
+          fs.mkdirSync(avatarsDir, { recursive: true });
+        }
+
+        const ext = ogImage.toLowerCase().includes('.png') ? 'png' : ogImage.toLowerCase().includes('.webp') ? 'webp' : 'jpg';
+        const filename = `fb_avatar_${cleanId}_${Date.now()}.${ext}`;
+        const filePath = path.join(avatarsDir, filename);
+
+        const imgRes = await axios.get(ogImage, {
+          responseType: 'arraybuffer',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          },
+          timeout: 10000,
+        });
+
+        if (imgRes.data && imgRes.data.length > 500) {
+          fs.writeFileSync(filePath, Buffer.from(imgRes.data));
+          this.logger.log(`Successfully downloaded and saved local FB avatar: /storage/avatars/${filename} (${(imgRes.data.length / 1024).toFixed(1)} KB)`);
+          return {
+            avatarUrl: `/storage/avatars/${filename}`,
+            scrapedName: ogTitle,
+            numericId,
+          };
+        }
+      } catch (dlErr: any) {
+        this.logger.warn(`Could not save local avatar buffer (${dlErr.message}). Using remote URL.`);
+        return {
+          avatarUrl: ogImage,
+          scrapedName: ogTitle,
+          numericId,
+        };
+      }
+    }
+
+    // Fallback: nếu có numericId hoặc pageId là số, thử lấy qua graph picture
+    const targetNumericId = numericId || (!isNaN(Number(pageIdOrSlug)) && pageIdOrSlug.length >= 6 ? pageIdOrSlug : '');
+    if (targetNumericId) {
+      try {
+        const graphUrl = `https://graph.facebook.com/${targetNumericId}/picture?type=large`;
+        const avatarsDir = ztteam_getAvatarsPath();
+        if (!fs.existsSync(avatarsDir)) fs.mkdirSync(avatarsDir, { recursive: true });
+
+        const filename = `fb_avatar_${targetNumericId}_${Date.now()}.jpg`;
+        const filePath = path.join(avatarsDir, filename);
+
+        const imgRes = await axios.get(graphUrl, {
+          responseType: 'arraybuffer',
+          timeout: 8000,
+          maxRedirects: 5,
+        });
+
+        if (imgRes.data && imgRes.data.length > 1000) {
+          fs.writeFileSync(filePath, Buffer.from(imgRes.data));
+          return {
+            avatarUrl: `/storage/avatars/${filename}`,
+            scrapedName: ogTitle,
+            numericId: targetNumericId,
+          };
+        }
+      } catch (gErr: any) {}
+    }
+
+    // Fallback cuối cùng: Avatar SVG/PNG màu sắc chuyên nghiệp mang tên của Page
+    const displayName = ogTitle || fallbackName || cleanId || 'Fanpage';
+    const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0284c7&color=fff&size=256&bold=true`;
+    return {
+      avatarUrl: fallbackAvatar,
+      scrapedName: ogTitle,
+      numericId,
+    };
+  }
+
+  /**
+   * ZTTeam: Làm mới avatar cho một Fanpage cụ thể
+   */
+  async ztteam_refreshPageAvatar(pageId: string) {
+    const page = await this.prisma.ztteam_pages.findUnique({ where: { id: pageId } });
+    if (!page) throw new BadRequestException('Fanpage không tồn tại');
+
+    const targetUrl = `https://www.facebook.com/${page.fb_page_id}`;
+    const scraped = await this.ztteam_fetchAndSavePageAvatar(targetUrl, page.fb_page_id, page.name);
+
+    const updateData: any = {};
+    if (scraped.avatarUrl) updateData.avatar = scraped.avatarUrl;
+    if (scraped.scrapedName && (page.name.startsWith('Fanpage ') || page.name === page.fb_page_id)) {
+      updateData.name = scraped.scrapedName;
+    }
+
+    const updated = await this.prisma.ztteam_pages.update({
+      where: { id: pageId },
+      data: updateData,
+    });
+
+    return { success: true, page: updated };
+  }
+
+  /**
+   * ZTTeam: Quét và làm mới avatar cho tất cả các Fanpage hiện có đang bị thiếu avatar hoặc dính graph.facebook.com
+   */
+  async ztteam_refreshAllPageAvatars() {
+    const pages = await this.prisma.ztteam_pages.findMany({
+      where: {
+        OR: [
+          { avatar: null },
+          { avatar: '' },
+          { avatar: { contains: 'graph.facebook.com' } },
+        ]
+      }
+    });
+
+    this.logger.log(`Found ${pages.length} pages needing avatar refresh...`);
+    let updatedCount = 0;
+
+    for (const p of pages) {
+      try {
+        const targetUrl = `https://www.facebook.com/${p.fb_page_id}`;
+        const scraped = await this.ztteam_fetchAndSavePageAvatar(targetUrl, p.fb_page_id, p.name);
+        if (scraped.avatarUrl) {
+          const updateData: any = { avatar: scraped.avatarUrl };
+          if (scraped.scrapedName && (p.name.startsWith('Fanpage ') || p.name === p.fb_page_id)) {
+            updateData.name = scraped.scrapedName;
+          }
+          await this.prisma.ztteam_pages.update({
+            where: { id: p.id },
+            data: updateData,
+          });
+          updatedCount++;
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to refresh avatar for page ${p.id}: ${err.message}`);
+      }
+    }
+
+    return { success: true, total: pages.length, updatedCount };
+  }
+
+  /**
+   * ZTTeam: Thêm Fanpage thủ công độc lập bằng URL (Không cần quyền hay Token)
+   */
+  async ztteam_manualAddPage(
+    userId: string,
+    data: {
+      url?: string;
+      pageUrl?: string;
+      pageId?: string;
+      name?: string;
+      token?: string;
+      avatar?: string;
+      category?: string;
+    }
+  ) {
+    const rawUrl = (data.url || data.pageUrl || '').trim();
+    let token = (data.token || '').trim();
+    let pageId = (data.pageId || '').trim();
+    let name = (data.name || '').trim();
+    let avatar = (data.avatar || '').trim();
+    let category = (data.category || '').trim();
+    let followerCount = 0;
+
+    // 1. Nếu người dùng nhập URL Page
+    if (rawUrl) {
+      const parsed = this.ztteam_extractFbPageInfo(rawUrl);
+      if (!pageId) pageId = parsed.slug;
+      if (!name) name = parsed.name;
+
+      // Cào Avatar và Tên xịn từ URL
+      if (!avatar || avatar.includes('graph.facebook.com')) {
+        try {
+          const scraped = await this.ztteam_fetchAndSavePageAvatar(rawUrl, pageId, name);
+          if (scraped.avatarUrl) {
+            avatar = scraped.avatarUrl;
+          }
+          if (scraped.scrapedName && (!name || name.startsWith('Fanpage '))) {
+            name = scraped.scrapedName;
+          }
+          if (scraped.numericId && (!pageId || isNaN(Number(pageId)))) {
+            pageId = scraped.numericId;
+          }
+        } catch (scrapeErr: any) {
+          this.logger.warn(`Failed to scrape FB avatar for ${rawUrl}: ${scrapeErr.message}`);
+        }
+      }
+    }
+
+    // 2. Nếu có token hợp lệ, thử nhận diện thêm thông tin (không bắt buộc)
+    if (token && token.length > 25 && token.startsWith('EAA')) {
+      try {
+        const verified = await this.ztteam_verifyPageToken(token);
+        pageId = pageId || verified.id;
+        name = name || verified.name;
+        avatar = avatar || verified.avatar;
+        category = category || verified.category;
+        followerCount = verified.followers_count || 0;
+      } catch (err: any) {
+        // Bỏ qua lỗi token
+      }
+    }
+
+    if (!pageId && !name) {
+      throw new BadRequestException('Vui lòng nhập URL Fanpage hoặc Tên Fanpage');
+    }
+
+    if (!pageId) {
+      pageId = `page_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    }
+    if (!name) {
+      name = `Fanpage ${pageId}`;
+    }
+    if (!token) {
+      token = 'manual_url_holder';
+    }
+    if (!avatar) {
+      avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0284c7&color=fff&size=256&bold=true`;
+    }
+
+    const manualAccount = await this.ztteam_getOrCreateManualAccount(userId);
+
+    const existingPage = await this.prisma.ztteam_pages.findFirst({
+      where: {
+        OR: [
+          { fb_page_id: pageId },
+          { name: name, fb_account_id: manualAccount.id }
+        ]
+      },
+    });
+
+    let pageRecord;
+    if (existingPage) {
+      pageRecord = await this.prisma.ztteam_pages.update({
+        where: { id: existingPage.id },
+        data: {
+          name,
+          category: category || existingPage.category,
+          avatar: avatar || existingPage.avatar,
+          page_token_encrypted: token,
+          token_status: 'active',
+          is_active: true,
+          follower_count: followerCount > 0 ? followerCount : existingPage.follower_count,
+        },
+      });
+    } else {
+      pageRecord = await this.prisma.ztteam_pages.create({
+        data: {
+          fb_page_id: pageId,
+          name,
+          avatar,
+          category: category || 'Fanpage',
+          follower_count: followerCount,
+          page_token_encrypted: token,
+          token_status: 'active',
+          fb_account_id: manualAccount.id,
+          post_format: 'reel',
+          video_engine: 'text_story',
+          link_mode: 'immediate',
+          add_link_to_comment: true,
+          add_link_to_caption: false,
+          link_target_position: 'comment',
+          auto_publish_enabled: false, // Quản lý chia video sau hoàn thiện, đăng tay thủ công
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Đã thêm Fanpage "${name}" thành công!`,
+      page: pageRecord,
+    };
+  }
+
+  /**
+   * ZTTeam: Thêm hàng loạt Fanpage thủ công bằng danh sách URL (Bulk Import)
+   */
+  async ztteam_manualBulkAddPages(
+    userId: string,
+    body: { rawText?: string; pages?: Array<{ url?: string; pageId?: string; name?: string; token?: string }> }
+  ) {
+    let items: Array<{ url?: string; pageId?: string; name?: string; token?: string }> = [];
+
+    if (body.pages && Array.isArray(body.pages)) {
+      items = body.pages;
+    } else if (body.rawText) {
+      const lines = body.rawText.split('\n').map(l => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        const parts = line.split('|').map(p => p.trim());
+        if (parts.length >= 3) {
+          if (parts[2].startsWith('http') || parts[1].startsWith('http')) {
+            const urlPart = parts[1].startsWith('http') ? parts[1] : parts[2];
+            const namePart = parts[0];
+            items.push({ url: urlPart, name: namePart });
+          } else {
+            items.push({ pageId: parts[0], name: parts[1], token: parts[2] });
+          }
+        } else if (parts.length === 2) {
+          if (parts[1].startsWith('http') || parts[1].includes('facebook.com')) {
+            items.push({ name: parts[0], url: parts[1] });
+          } else if (parts[0].startsWith('http') || parts[0].includes('facebook.com')) {
+            items.push({ url: parts[0], name: parts[1] });
+          } else {
+            items.push({ name: parts[0], url: parts[1] });
+          }
+        } else if (parts.length === 1) {
+          const single = parts[0];
+          if (single.startsWith('http') || single.includes('facebook.com') || single.includes('/')) {
+            items.push({ url: single });
+          } else if (single.startsWith('EAA') && single.length > 25) {
+            items.push({ token: single });
+          } else {
+            items.push({ name: single, url: single });
+          }
+        }
+      }
+    }
+
+    if (items.length === 0) {
+      throw new BadRequestException('Không tìm thấy danh sách URL Fanpage hợp lệ để thêm');
+    }
+
+    const added: any[] = [];
+    const errors: any[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      try {
+        const res = await this.ztteam_manualAddPage(userId, item);
+        added.push(res.page);
+      } catch (err: any) {
+        errors.push({ line: i + 1, item, error: err.message });
+      }
+    }
+
+    return {
+      success: true,
+      total: items.length,
+      addedCount: added.length,
+      errorCount: errors.length,
+      added,
+      errors,
+      message: `Đã thêm thành công ${added.length}/${items.length} Fanpage!`,
     };
   }
 }

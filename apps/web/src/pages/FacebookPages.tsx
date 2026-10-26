@@ -13,6 +13,7 @@ function FanpageCard({ page, isExpired, testingPageId, handleTestPost, handleTog
   const navigate = useNavigate();
   const { ztteam_getPageReport, ztteam_deletePage } = useZTTeamFacebookStore();
   const { ztteam_showToast, ztteam_showConfirm } = useUIStore();
+  const { ztteam_fetchPagesFromDB } = useFacebookStore();
   const [insights, setInsights] = useState<any>(null);
 
   const isCurrentlyActive = page.isActive !== false;
@@ -156,25 +157,43 @@ function FanpageCard({ page, isExpired, testingPageId, handleTestPost, handleTog
               <span className="material-symbols-outlined text-[16px] font-black">check</span>
             </div>
           )}
-          {page.avatar ? (
-            <img
-              src={page.avatar}
-              alt={page.name}
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                const target = e.currentTarget;
-                if (!target.dataset.fallback) {
-                  target.dataset.fallback = 'true';
-                  target.src = `https://graph.facebook.com/${page.fb_page_id || page.id}/picture?type=large`;
+          <div className="relative group/avatar shrink-0 mt-0.5">
+            {page.avatar ? (
+              <img
+                src={page.avatar}
+                alt={page.name}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.fallback) {
+                    target.dataset.fallback = 'true';
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(page.name || 'P')}&background=0284c7&color=fff&size=256&bold=true`;
+                  }
+                }}
+                className="w-11 h-11 rounded-2xl object-cover bg-slate-900 shadow-md"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white font-black flex items-center justify-center shadow-md">
+                <span className="material-symbols-outlined text-xl">pages</span>
+              </div>
+            )}
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await api.post(`/facebook/pages/${page.id}/refresh-avatar`);
+                  ztteam_showToast(`Đã làm mới ảnh đại diện cho ${page.name}`, 'success');
+                  await ztteam_fetchPagesFromDB();
+                } catch (err: any) {
+                  ztteam_showToast(err.message, 'error');
                 }
               }}
-              className="w-11 h-11 rounded-2xl object-cover bg-slate-900 shadow-md shrink-0 mt-0.5"
-            />
-          ) : (
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white font-black flex items-center justify-center shadow-md shrink-0 mt-0.5">
-              <span className="material-symbols-outlined text-xl">pages</span>
-            </div>
-          )}
+              className="absolute -bottom-1 -right-1 w-5 h-5 bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white rounded-full flex items-center justify-center border border-white/20 shadow opacity-0 group-hover/avatar:opacity-100 transition-opacity"
+              title="Cập nhật lại ảnh đại diện Facebook"
+            >
+              <span className="material-symbols-outlined text-[11px]">refresh</span>
+            </button>
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <p className="font-bold text-base text-fb-text truncate leading-snug">{page.name}</p>
@@ -218,22 +237,34 @@ function FanpageCard({ page, isExpired, testingPageId, handleTestPost, handleTog
 
             {/** Badges phân loại Doanh Nghiệp (BM) hoặc Tài Khoản Cá Nhân, Meta App & Thời hạn Token */}
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              <span
-                onClick={(e) => { e.stopPropagation(); navigate('/facebook/business-hub'); }}
-                className={`cursor-pointer px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 transition-colors ${
-                  page.accountType === 'PERSONAL' || !page.businessId
-                    ? 'bg-slate-700/40 hover:bg-slate-700/60 text-slate-300 border-slate-600/30'
-                    : 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/20'
-                }`}
-                title={page.accountType === 'PERSONAL' || !page.businessId ? 'Tài Khoản Facebook Cá Nhân' : 'Bấm để mở Hub Quản Lý Doanh Nghiệp'}
-              >
-                <span className="material-symbols-outlined text-[12px]">
-                  {page.accountType === 'PERSONAL' || !page.businessId ? 'person' : 'corporate_fare'}
+              {page.accountType === 'MANUAL' || (!page.businessId && page.accountType !== 'PERSONAL') ? (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[12px]">verified</span>
+                  <span>Thủ Công</span>
                 </span>
-                <span className="truncate max-w-[120px]">
-                  {page.businessName || (page.accountType === 'PERSONAL' ? 'Tài Khoản Cá Nhân' : 'Doanh Nghiệp BM')}
+              ) : (
+                <span
+                  className="px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 bg-slate-700/40 text-slate-300 border-slate-600/30"
+                  title="Tài khoản liên kết Facebook"
+                >
+                  <span className="material-symbols-outlined text-[12px]">
+                    {page.accountType === 'PERSONAL' ? 'person' : 'pages'}
+                  </span>
+                  <span className="truncate max-w-[120px]">
+                    {page.accountType === 'PERSONAL' ? 'Tài Khoản Cá Nhân' : (page.businessName || 'Facebook Page')}
+                  </span>
                 </span>
-              </span>
+              )}
+
+              {page.defaultReelTemplateId && (
+                <span
+                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 shadow-xs"
+                  title={`Mẫu Text Story Reel đang KHÓA CỨNG: ${page.defaultReelTemplateName || page.defaultReelTemplateId}`}
+                >
+                  <span className="material-symbols-outlined text-[12px] text-amber-400">lock</span>
+                  <span className="truncate max-w-[150px]">{page.defaultReelTemplateName || 'Khóa Mẫu Reel'}</span>
+                </span>
+              )}
 
               {page.appName && (
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
@@ -545,6 +576,14 @@ function FanpageCard({ page, isExpired, testingPageId, handleTestPost, handleTog
             <span className="material-symbols-outlined text-base sm:text-sm">settings</span>
             <span className="hidden sm:inline">Cài đặt</span>
           </button>
+          <button
+            onClick={() => navigate(`/facebook/pages/${page.id}/settings#tab=2`)}
+            className="w-8 h-8 sm:w-auto sm:h-9 px-0 sm:px-3 bg-amber-500/15 text-amber-300 hover:bg-amber-500 hover:text-slate-900 rounded-full font-bold text-xs flex items-center justify-center gap-0 sm:gap-1.5 transition-all shadow-sm shrink-0 aspect-square sm:aspect-auto border border-amber-500/30"
+            title="Kho video đã chia & render hoàn thiện của Fanpage này (Bấm để xem và tải về máy)"
+          >
+            <span className="material-symbols-outlined text-base sm:text-sm text-amber-400">video_library</span>
+            <span className="hidden sm:inline">Kho Video ({page.totalPendingCount || 0})</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -636,7 +675,7 @@ export default function FacebookPages() {
   const [bulkPostsPerDay, setBulkPostsPerDay] = useState<number>(4);
   const [bulkAutoPublish, setBulkAutoPublish] = useState<boolean>(true);
   const [bulkBgmList, setBulkBgmList] = useState<any[]>([]);
-  const [bulkLinkMode, setBulkLinkMode] = useState<'view_threshold' | 'delayed_2step' | 'immediate' | 'none'>('view_threshold');
+  const [bulkLinkMode, setBulkLinkMode] = useState<'view_threshold' | 'delayed_2step' | 'immediate' | 'none'>('immediate');
   const [bulkLinkViewThreshold, setBulkLinkViewThreshold] = useState<number>(1000);
   const [bulkLinkTargetPosition, setBulkLinkTargetPosition] = useState<'comment' | 'caption' | 'both'>('comment');
   const [bulkLinkFallbackHours, setBulkLinkFallbackHours] = useState<number>(24);
@@ -652,6 +691,97 @@ export default function FacebookPages() {
   const [isSubmittingBulkGenerate, setIsSubmittingBulkGenerate] = useState<boolean>(false);
   const [isSubmittingBulkApply, setIsSubmittingBulkApply] = useState<boolean>(false);
   const [bulkBrandingProgressMsg, setBulkBrandingProgressMsg] = useState<string | null>(null);
+
+  /** State Modal Thêm Fanpage Thủ Công bằng URL (Không cần Token hay Quyền Quản Trị) */
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [manualTab, setManualTab] = useState<'url' | 'bulk'>('url');
+  const [manualUrl, setManualUrl] = useState('');
+  const [manualPageName, setManualPageName] = useState('');
+  const [manualCategory, setManualCategory] = useState('');
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+  const [manualBulkText, setManualBulkText] = useState('');
+
+  /** Handler: Thêm 1 Page thủ công bằng URL */
+  const handleManualAddSubmit = async () => {
+    if (!manualUrl.trim()) {
+      ztteam_showToast('Vui lòng nhập đường dẫn URL Fanpage Facebook', 'error');
+      return;
+    }
+    try {
+      setIsSubmittingManual(true);
+      const res = await api.post('/facebook/pages/manual-add', {
+        url: manualUrl.trim(),
+        name: manualPageName.trim() || undefined,
+        category: manualCategory.trim() || undefined,
+      });
+      if (res.data?.success) {
+        ztteam_showToast(res.data.message || 'Thêm Fanpage thủ công thành công!', 'success');
+        setIsManualModalOpen(false);
+        setManualUrl('');
+        setManualPageName('');
+        setManualCategory('');
+        await ztteam_fetchPagesFromDB();
+      }
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || err.message || 'Lỗi khi thêm Fanpage', 'error');
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
+  /** Handler: Thêm hàng loạt Page thủ công bằng danh sách URL */
+  const handleManualBulkAddSubmit = async () => {
+    if (!manualBulkText.trim()) {
+      ztteam_showToast('Vui lòng dán danh sách URL Fanpage Facebook', 'error');
+      return;
+    }
+    try {
+      setIsSubmittingManual(true);
+      const res = await api.post('/facebook/pages/manual-bulk-add', { rawText: manualBulkText });
+      if (res.data?.success) {
+        ztteam_showToast(res.data.message || `Đã thêm ${res.data.addedCount} Fanpage thành công!`, 'success');
+        setIsManualModalOpen(false);
+        setManualBulkText('');
+        await ztteam_fetchPagesFromDB();
+      }
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || err.message || 'Lỗi khi thêm hàng loạt', 'error');
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
+  /** Handler nhanh: Tự Động Phân Bổ Mẫu & Khóa Cứng */
+  const handleQuickAutoAllocateAndLock = async () => {
+    const targetIds = selectedPageIds.length > 0 ? selectedPageIds : pages.map(p => p.id);
+    if (targetIds.length === 0) {
+      ztteam_showToast('Không có Fanpage nào để phân bổ mẫu', 'error');
+      return;
+    }
+    const confirm = await ztteam_showConfirm(
+      'Tự Động Phân Bổ Mẫu & Khóa Cứng',
+      `Bạn có chắc chắn muốn phân bổ tự động các mẫu Text Story độc bản và KHÓA CỨNG cố định cho ${targetIds.length} Fanpage?`
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await api.post('/facebook/pages/bulk-apply-schedule', {
+        pageIds: targetIds,
+        videoEngine: 'text_story',
+        defaultReelTemplateId: 'random',
+        postFormat: 'reel',
+        autoPublishEnabled: true,
+        linkMode: 'immediate',
+        linkTargetPosition: 'comment',
+      });
+      if (res.data?.success) {
+        ztteam_showToast(res.data.message || 'Đã phân bổ và khóa cứng mẫu thành công cho từng Page!', 'success');
+        await ztteam_fetchPagesFromDB();
+      }
+    } catch (err: any) {
+      ztteam_showToast(err.response?.data?.message || err.message || 'Lỗi khi phân bổ mẫu', 'error');
+    }
+  };
 
   const uniqueOwners = Array.from(new Set(pages.map(p => p.ownerName).filter(Boolean)));
   const uniqueBusinesses = Array.from(new Set(pages.map(p => p.businessName).filter(Boolean)));
@@ -1045,12 +1175,12 @@ export default function FacebookPages() {
             </button>
 
             <button
-              onClick={() => navigate('/facebook/business-hub')}
-              className="px-3.5 py-2 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded-full text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors border border-blue-500/30 col-span-2 sm:col-span-1"
-              title="Mở Quản Lý Doanh Nghiệp (BM) & Token Vĩnh Viễn"
+              onClick={() => setIsManualModalOpen(true)}
+              className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 rounded-full text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors border border-emerald-500/30 col-span-2 sm:col-span-1 shadow-sm"
+              title="Nhập Fanpage thủ công bằng Token hoặc thông tin chi tiết (Không cần BM/App)"
             >
-              <span className="material-symbols-outlined text-base">domain</span>
-              <span className="truncate">Quản Lý BM &amp; App</span>
+              <span className="material-symbols-outlined text-base">add_circle</span>
+              <span className="truncate">+ Nhập Page Thủ Công</span>
             </button>
           </div>
 
@@ -1244,7 +1374,24 @@ export default function FacebookPages() {
                 className="flex-1 sm:w-40"
               />
             )}
-            <button onClick={() => ztteam_fetchPagesFromDB()} disabled={isLoading} className="px-3 py-2 rounded-full bg-fb-surface-hover text-fb-text-muted hover:text-fb-text text-xs font-medium flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors shrink-0">
+            <button
+              onClick={async () => {
+                try {
+                  ztteam_showToast('Đang quét và làm mới ảnh đại diện cho các Fanpage...', 'info');
+                  const res = await api.post('/facebook/pages/refresh-all-avatars');
+                  ztteam_showToast(`Đã làm mới ảnh đại diện cho ${res.data?.updatedCount ?? 0} Fanpage!`, 'success');
+                  await ztteam_fetchPagesFromDB();
+                } catch (e: any) {
+                  ztteam_showToast(e.message, 'error');
+                }
+              }}
+              className="px-3 py-1.5 rounded-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+              title="Tự động quét và tải ảnh đại diện chất lượng cao cho các Fanpage"
+            >
+              <span className="material-symbols-outlined text-sm">image</span>
+              <span>Đồng bộ Avatar</span>
+            </button>
+            <button onClick={() => ztteam_fetchPagesFromDB()} disabled={isLoading} className="px-3 py-2 rounded-full bg-fb-surface-hover text-fb-text-muted hover:text-fb-text text-xs font-medium flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors shrink-0" title="Tải lại danh sách">
               <span className={`material-symbols-outlined text-base shrink-0 ${isLoading ? 'animate-spin' : ''}`}>refresh</span>
             </button>
           </div>
@@ -1336,6 +1483,15 @@ export default function FacebookPages() {
               >
                 <span className="material-symbols-outlined text-sm">palette</span>
                 <span>Bộ Nhận Diện AI (Gemini)</span>
+              </button>
+
+              <button
+                onClick={handleQuickAutoAllocateAndLock}
+                className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold flex items-center gap-1.5 transition-colors border border-amber-500/40 shadow-sm"
+                title="Tự động phân bổ 50 mẫu Text Story độc bản và khóa cứng riêng cho từng Fanpage"
+              >
+                <span className="material-symbols-outlined text-sm text-amber-400">lock_reset</span>
+                <span>Tự Động Phân Bổ Mẫu &amp; Khóa Cứng</span>
               </button>
             </div>
           </div>
@@ -1958,155 +2114,49 @@ export default function FacebookPages() {
                     onChange={(v: any) => setBulkLinkMode(v)}
                     options={[
                       {
-                        value: 'view_threshold',
-                        label: '🎯 Gắn Link theo Lượt xem Video (Nuôi View -> Đạt mốc mới tự gắn link - Khuyên dùng)'
+                        value: 'immediate',
+                        label: '🚀 Gắn Link ngay khi xuất bản (Tạo sẵn 1 đoạn Comment & Link để đăng tay)'
                       },
                       {
                         value: 'none',
                         label: '🚫 Không Thêm Link (Video & Bài viết hoàn toàn sạch 100%, không chèn link)'
-                      },
-                      {
-                        value: 'delayed_2step',
-                        label: '⚡ Tương tác thông minh 2 bước (Mồi YES sau 60p -> Reply Link sau 15p)'
-                      },
-                      {
-                        value: 'immediate',
-                        label: '🚀 Gắn Link ngay khi xuất bản (Cổ điển)'
                       }
                     ]}
                   />
                 </div>
 
-                {/** Khi chọn Không thêm link */}
-                {bulkLinkMode === 'none' && (
-                  <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-[11px] text-emerald-200/90 leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-150">
-                    <span className="material-symbols-outlined text-emerald-400 text-[18px] mt-0.5 shrink-0">verified_user</span>
-                    <div>
-                      <strong className="text-emerald-300 block mb-0.5 font-bold">Chế độ không thêm link (100% Clean Video):</strong>
-                      <span>Toàn bộ {selectedPageIds.length} Fanpage được chọn sẽ <b>hoàn toàn không chèn bất kỳ đường link nào</b> vào Mô tả (Caption) hay Bình luận (Comment). Giúp video đạt mức phân phối đề xuất cao nhất.</span>
-                    </div>
-                  </div>
-                )}
-
-                {/** Khi chọn Gắn link theo view */}
-                {bulkLinkMode === 'view_threshold' && (
-                  <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in duration-150">
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase">
-                          Ngưỡng lượt xem kích hoạt (Views Threshold)
-                        </label>
-                        <span className="text-[11px] text-cyan-400 font-black">
-                          {Number(bulkLinkViewThreshold).toLocaleString()} views
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        min="100"
-                        step="100"
-                        value={bulkLinkViewThreshold}
-                        onChange={e => setBulkLinkViewThreshold(Math.max(100, parseInt(e.target.value, 10) || 100))}
-                        className="w-full bg-fb-surface border border-fb-surface-hover/80 rounded-lg px-3 py-1.5 text-xs text-fb-text font-bold focus:border-fb-blue focus:outline-none"
-                        placeholder="Nhập số view..."
-                      />
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {[500, 1000, 2000, 5000, 10000].map(v => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => setBulkLinkViewThreshold(v)}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all ${
-                              bulkLinkViewThreshold === v
-                                ? 'bg-fb-blue text-white border-fb-blue shadow-xs'
-                                : 'bg-black/20 hover:bg-black/30 text-fb-text-muted border-white/5'
-                            }`}
-                          >
-                            {v.toLocaleString()} views
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
-                          Vị trí gắn Link
-                        </label>
-                        <CustomDropdown
-                          value={bulkLinkTargetPosition}
-                          onChange={(v: any) => setBulkLinkTargetPosition(v)}
-                          options={[
-                            { value: 'comment', label: '💬 Tự động gắn link vào Bình luận (Comment - An toàn nhất)' },
-                            { value: 'caption', label: '📝 Tự động sửa thêm link vào Mô tả video (Caption)' },
-                            { value: 'both', label: '🔥 Cả Bình luận & Mô tả video' }
-                          ]}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
-                          Thời gian Fallback (Dự phòng)
-                        </label>
-                        <CustomDropdown
-                          value={bulkLinkFallbackHours}
-                          onChange={(v: any) => setBulkLinkFallbackHours(Number(v))}
-                          options={[
-                            { value: 12, label: 'Sau 12 giờ nếu chưa đủ view' },
-                            { value: 24, label: 'Sau 24 giờ nếu chưa đủ view (Chuẩn)' },
-                            { value: 48, label: 'Sau 48 giờ nếu chưa đủ view' },
-                            { value: 0, label: 'Không giới hạn (Chỉ gắn khi đủ view)' }
-                          ]}
-                        />
-                      </div>
-                    </div>
-
-                    {bulkLinkFallbackHours > 0 && (
-                      <div>
-                        <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
-                          Hành động khi hết thời gian Fallback
-                        </label>
-                        <CustomDropdown
-                          value={bulkLinkFallbackAction}
-                          onChange={(v: any) => setBulkLinkFallbackAction(v)}
-                          options={[
-                            { value: 'inject', label: '⚡ Tự động gắn link (Đảm bảo bài luôn có link điều hướng)' },
-                            { value: 'skip', label: '🛡️ Bỏ qua, không gắn link (Giữ video sạch 100%)' }
-                          ]}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/** Khi chọn Tương tác 2 bước */}
-                {bulkLinkMode === 'delayed_2step' && (
-                  <div className="space-y-2 text-[11px] text-fb-text-muted leading-relaxed animate-in fade-in duration-150">
-                    <div className="flex items-start gap-2 bg-black/20 p-2.5 rounded-xl border border-white/5">
-                      <span className="material-symbols-outlined text-cyan-400 text-[16px] mt-0.5 shrink-0">check_circle</span>
-                      <div>
-                        <strong className="text-fb-text block">Caption sạch — Tránh bị Facebook bóp tương tác:</strong>
-                        <span>Không chèn link trực tiếp vào Caption. Tự động mồi bình luận "YES" sau 60p và Reply link sau 15p.</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/** Khi chọn Gắn ngay */}
                 {bulkLinkMode === 'immediate' && (
                   <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in duration-150">
                     <div>
                       <label className="block text-[10px] font-bold text-fb-text-muted uppercase mb-1">
-                        Vị trí gắn Link ngay khi đăng
+                        Vị trí gắn Link điều hướng
                       </label>
                       <CustomDropdown
                         value={bulkLinkTargetPosition}
                         onChange={(v: any) => setBulkLinkTargetPosition(v)}
                         options={[
-                          { value: 'comment', label: '💬 Bình luận (Đăng comment kèm link ngay sau khi video lên)' },
+                          { value: 'comment', label: '💬 Bình luận (1 đoạn comment mồi ngắn gọn kèm link bài viết - Chuẩn nhất)' },
                           { value: 'caption', label: '📝 Chèn trực tiếp vào Caption mô tả video' },
                           { value: 'both', label: '🔥 Cả Bình luận & Caption' }
                         ]}
                       />
+                    </div>
+                    <div className="bg-blue-950/30 p-3 rounded-xl border border-blue-500/20 text-[11px] text-blue-200/90 leading-relaxed flex items-start gap-2.5">
+                      <span className="material-symbols-outlined text-blue-400 text-[18px] mt-0.5 shrink-0">task_alt</span>
+                      <div>
+                        <strong className="text-blue-300 block mb-0.5 font-bold">Chế độ Đăng tay hàng loạt:</strong>
+                        <span>Áp dụng cấu hình tạo sẵn <b>1 đoạn Caption sạch</b> và <b>1 đoạn Comment kèm link bài viết</b> cho toàn bộ {selectedPageIds.length} Fanpage đã chọn. Dễ dàng sao chép đăng thủ công.</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {bulkLinkMode === 'none' && (
+                  <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-[11px] text-emerald-200/90 leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-150">
+                    <span className="material-symbols-outlined text-emerald-400 text-[18px] mt-0.5 shrink-0">verified_user</span>
+                    <div>
+                      <strong className="text-emerald-300 block mb-0.5 font-bold">Chế độ không thêm link (100% Clean Video):</strong>
+                      <span>Toàn bộ {selectedPageIds.length} Fanpage được chọn sẽ <b>hoàn toàn không chèn bất kỳ đường link nào</b> vào Mô tả (Caption) hay Bình luận (Comment).</span>
                     </div>
                   </div>
                 )}
@@ -2413,6 +2463,207 @@ export default function FacebookPages() {
                   setIsBulkBrandingModalOpen(false);
                   setBulkBrandingProgressMsg(null);
                 }}
+                className="px-5 py-2 bg-fb-surface-hover hover:bg-fb-surface-hover/80 text-fb-text font-bold rounded-xl text-xs transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/** MODAL NHẬP PAGE THỦ CÔNG BẰNG URL (KHÔNG CẦN QUYỀN HAY TOKEN) */}
+      {isManualModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-fb-surface w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col border border-slate-700/50">
+            {/** Header Modal */}
+            <div className="flex items-center justify-between pb-3 border-b border-fb-surface-hover/60">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shadow-md border border-emerald-500/30">
+                  <span className="material-symbols-outlined text-2xl">link</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-black text-fb-text tracking-tight flex items-center gap-2">
+                    <span>Nhập Fanpage Thủ Công</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      Chỉ Cần URL
+                    </span>
+                  </h4>
+                  <p className="text-xs text-fb-text-muted mt-0.5">
+                    Quản lý &amp; chia video Reel Text Story sau khi render — Không cần quyền Facebook, không cần Token
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsManualModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-fb-surface-hover/60 hover:bg-fb-surface-hover text-fb-text-muted hover:text-fb-text flex items-center justify-center transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/** Tabs Navigation (Theo đúng chuẩn FacebookPageSettings) */}
+            <div className="flex border-b border-fb-surface-hover/60 bg-fb-surface-hover/20 p-1 rounded-xl gap-1">
+              <button
+                type="button"
+                onClick={() => setManualTab('url')}
+                className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                  manualTab === 'url'
+                    ? 'bg-fb-surface text-emerald-400 shadow-sm border border-emerald-500/30'
+                    : 'text-fb-text-muted hover:text-fb-text'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">link</span>
+                <span>1. Nhập Từng URL</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setManualTab('bulk')}
+                className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                  manualTab === 'bulk'
+                    ? 'bg-fb-surface text-amber-400 shadow-sm border border-amber-500/30'
+                    : 'text-fb-text-muted hover:text-fb-text'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">playlist_add</span>
+                <span>2. Dán Hàng Loạt URL</span>
+              </button>
+            </div>
+
+            {/** Tab Content Body */}
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+              {/** TAB 1: NHẬP TỪNG URL */}
+              {manualTab === 'url' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-fb-text mb-1.5 flex items-center justify-between">
+                      <span>Đường dẫn (URL) Fanpage Facebook *</span>
+                      <span className="text-[11px] text-emerald-400 font-semibold">Tự động nhận diện Tên &amp; ID từ link</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={manualUrl}
+                      onChange={(e) => setManualUrl(e.target.value)}
+                      placeholder="https://www.facebook.com/tenfanpagecuaban hoặc https://facebook.com/profile.php?id=..."
+                      className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none transition-colors font-mono"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-fb-text mb-1">
+                        Tên gợi nhớ (Tùy chọn)
+                      </label>
+                      <input
+                        type="text"
+                        value={manualPageName}
+                        onChange={(e) => setManualPageName(e.target.value)}
+                        placeholder="Tự động trích xuất từ link nếu để trống"
+                        className="w-full bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-fb-text mb-1">
+                        Hạng mục / Chủ đề (Tùy chọn)
+                      </label>
+                      <input
+                        type="text"
+                        value={manualCategory}
+                        onChange={(e) => setManualCategory(e.target.value)}
+                        placeholder="Ví dụ: Tin tức, Review phim, Thể thao..."
+                        className="w-full bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-[11px] text-emerald-300 leading-relaxed space-y-1">
+                    <p className="font-bold flex items-center gap-1.5 text-emerald-400">
+                      <span className="material-symbols-outlined text-sm">verified_user</span>
+                      Mục đích phân chia Video sau khi render:
+                    </p>
+                    <p>• Hệ thống chỉ sử dụng URL để gắn và lưu trữ các Video Reel Text Story đã hoàn thiện riêng cho từng Fanpage.</p>
+                    <p>• Hoàn toàn <b>không yêu cầu quyền quản trị</b> Facebook, <b>không cần Token</b> và <b>không tự động đăng bài</b>.</p>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleManualAddSubmit}
+                      disabled={isSubmittingManual || !manualUrl.trim()}
+                      className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSubmittingManual ? (
+                        <>
+                          <span className="material-symbols-outlined animate-spin text-sm">sync</span>
+                          <span>Đang lưu...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-sm">add_circle</span>
+                          <span>Thêm Fanpage Này</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/** TAB 2: NHẬP HÀNG LOẠT (BULK IMPORT) BẰNG DANH SÁCH URL */}
+              {manualTab === 'bulk' && (
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-bold text-fb-text mb-1.5 flex items-center justify-between">
+                      <span>Danh Sách URL Fanpage (Mỗi dòng 1 URL) *</span>
+                      <span className="text-[11px] text-amber-400 font-semibold">Hỗ trợ dán URL hoặc Tên | URL</span>
+                    </label>
+                    <textarea
+                      value={manualBulkText}
+                      onChange={(e) => setManualBulkText(e.target.value)}
+                      rows={7}
+                      placeholder={`https://www.facebook.com/taphoa.usa\nhttps://www.facebook.com/reviewphim24h\nTin Tức Thể Thao | https://www.facebook.com/thethaoplus`}
+                      className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl p-3 text-xs text-slate-200 font-mono focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-300 leading-relaxed space-y-1">
+                    <p className="font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">info</span>
+                      Lưu ý dán danh sách URL:
+                    </p>
+                    <p>• Dán mỗi dòng một link Facebook Fanpage (hoặc theo định dạng <code>Tên Fanpage | URL</code>).</p>
+                    <p>• Tất cả Fanpage sẽ được tạo ngay trong hệ thống để sẵn sàng tự động phân bổ mẫu video Text Story và quản lý kho video.</p>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleManualBulkAddSubmit}
+                      disabled={isSubmittingManual || !manualBulkText.trim()}
+                      className="px-6 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:opacity-90 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-amber-500/25 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSubmittingManual ? (
+                        <>
+                          <span className="material-symbols-outlined animate-spin text-sm">sync</span>
+                          <span>Đang xử lý thêm hàng loạt...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-sm">library_add_check</span>
+                          <span>Thêm Hàng Loạt Fanpage</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/** Modal Footer */}
+            <div className="pt-3 border-t border-fb-surface-hover/60 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setIsManualModalOpen(false)}
                 className="px-5 py-2 bg-fb-surface-hover hover:bg-fb-surface-hover/80 text-fb-text font-bold rounded-xl text-xs transition-colors"
               >
                 Đóng
